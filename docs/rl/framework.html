@@ -1,0 +1,345 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Sample RL Framework &mdash; Isaac Gym  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/isaac_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Domain Randomization" href="domainrandomization.html" />
+    <link rel="prev" title="Reinforcement Learning" href="index.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Isaac Gym
+          
+
+          
+            
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../about_gym.html">About Isaac Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../programming/index.html">Programming</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Reinforcement Learning</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Sample RL Framework</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#class-definition">Class Definition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#basetask-class-base-task-py">BaseTask Class (base_task.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#vectask-class-vec-task-py">VecTask Class (vec_task.py)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-a-new-task">Creating a New Task</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="domainrandomization.html">Domain Randomization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faqs.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Isaac Gym</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Reinforcement Learning</a> &raquo;</li>
+        
+      <li>Sample RL Framework</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="sample-rl-framework">
+<h1>Sample RL Framework<a class="headerlink" href="#sample-rl-framework" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>We provide a simple Reinforcement Learning framework that bridges simulation with RL.
+As part of Isaac Gym, we include a minimal PyTorch impelementation of PPO, <strong>rl-pytorch</strong>, which can be used to train our sample tasks.
+In addition, we have more advanced examples of training with a third-party highly-optimized RL library, <a class="reference external" href="https://github.com/Denys88/rl_games">rl_games</a>. This also demonstrates how our framework can be used with other RL libraries.</p>
+<p>To use <strong>rl_games</strong> the following instructions should be performed:</p>
+<blockquote>
+<div><p>git clone <a class="reference external" href="https://github.com/Denys88/rl_games.git">https://github.com/Denys88/rl_games.git</a>
+git checkout tags/v1.0-alpha2
+pip install -e .</p>
+</div></blockquote>
+<p>For all the sample tasks provided, we include training configurations for both rl-pytorch and rl_games, denoted with prefixes <code class="docutils literal notranslate"><span class="pre">pytorch_ppo_*.yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">rlg_*.yaml</span></code>. These files are located in python/rlgpu/cfg. The appropriate config file will be selected automatically based on the task being executed and the script that it is being launched from. To launch a task using rl-pytorch, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">train.py</span></code>, with rl_games, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">rlg_train.py</span></code> from python/rlgpu.</p>
+<p>For a list of the sample tasks we provide, refer to the <a class="reference internal" href="../examples/rl.html#rl-examples"><span class="std std-ref">List of Examples</span></a>.</p>
+</div>
+<div class="section" id="class-definition">
+<h2>Class Definition<a class="headerlink" href="#class-definition" title="Permalink to this headline">¶</a></h2>
+<p>There are two base classes defined for Isaac Gym’s RL framework: <code class="docutils literal notranslate"><span class="pre">base_task.py</span></code> and <code class="docutils literal notranslate"><span class="pre">vec_task.py</span></code>.
+These are located in python/tasks/base and are the fundamental core of the RL framework.</p>
+<div class="section" id="basetask-class-base-task-py">
+<h3>BaseTask Class (base_task.py)<a class="headerlink" href="#basetask-class-base-task-py" title="Permalink to this headline">¶</a></h3>
+<p>The BaseTask class is designed to act as a parent class for all RL tasks using Isaac Gym’s RL framework.
+It provides an interface for interaction with RL alrogithms and includes functionalities that are required for all RL tasks.</p>
+<p>BaseTask constructor takes a few arguments:</p>
+<dl class="simple">
+<dt>num_obs</dt><dd><p>Number of observations for the task</p>
+</dd>
+<dt>num_acts</dt><dd><p>Number of actions for the task</p>
+</dd>
+<dt>num_envs</dt><dd><p>Number of environments in simulation</p>
+</dd>
+<dt>graphics_device</dt><dd><p>Device to use for graphical display</p>
+</dd>
+<dt>device</dt><dd><p>Device to use for simulation and task</p>
+</dd>
+</dl>
+<p>The <code class="docutils literal notranslate"><span class="pre">__init__</span></code> function of BaseTask initializes buffers required for RL on the device specified. These include observation buffer, reward buffer, reset buffer, progress buffer, randomization buffer, and an optional extras array for passing in any additional information to the RL algorithm. This function will then trigger a call to <code class="docutils literal notranslate"><span class="pre">create_sim()</span></code>, which must be implemented by the extended classes. A call to <code class="docutils literal notranslate"><span class="pre">prepare_sim()</span></code> will also be made to initialize the internal data structures for simulation. If running with a viewer, this function will also initialize the viewer and create keyboard shortcuts for quitting the application (ESC) and disabling/enabling rendering (V).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">step</span></code> function is designed to guide the workflow of each RL iteration. This function can be viewed in three parts: <code class="docutils literal notranslate"><span class="pre">pre_physics_step</span></code>, <code class="docutils literal notranslate"><span class="pre">simulate</span></code>, and <code class="docutils literal notranslate"><span class="pre">post_physics_step</span></code>. <code class="docutils literal notranslate"><span class="pre">pre_physics_step</span></code> should be implemented to perform any computations required before stepping the physics simulation. As an example, applying actions from the policy should happen in <code class="docutils literal notranslate"><span class="pre">pre_physics_step</span></code>. <code class="docutils literal notranslate"><span class="pre">simulate</span></code> is then called to step the physics simulation. <code class="docutils literal notranslate"><span class="pre">post_physics_step</span></code> should implement computations performed after stepping the physics simulation, e.g. computing rewards and observations.</p>
+<p>BaseTask also provides an implementation of <code class="docutils literal notranslate"><span class="pre">render</span></code> to step graphics if a viewer is initialized.</p>
+<p>Additionally, BaseTask provides an interface to perform Domain Randomization via the <code class="docutils literal notranslate"><span class="pre">apply_randomizations</span></code> method. For more details, please see <a class="reference internal" href="domainrandomization.html"><span class="doc">Domain Randomization</span></a>.</p>
+</div>
+<div class="section" id="vectask-class-vec-task-py">
+<h3>VecTask Class (vec_task.py)<a class="headerlink" href="#vectask-class-vec-task-py" title="Permalink to this headline">¶</a></h3>
+<p>VecTask provides a vectorized wrapper of the task to interact directly with RL algorithms. When a task is executed, we wrap the specified task class in a VecTask class and pass this wrapper to the RL algorithm. Implementation details can be found in python/rlgpu/utils/launch_task.py.</p>
+<p>VecTask constructor takes a few argumets:</p>
+<dl class="simple">
+<dt>task</dt><dd><p>Task instance to be executed (inherited from BaseTask)</p>
+</dd>
+<dt>rl_device</dt><dd><p>Device to use for RL algorithm</p>
+</dd>
+<dt>clip_observations</dt><dd><p>Observations will be clipped to the range [-clip_observation, clip_observations]</p>
+</dd>
+<dt>clip_actions</dt><dd><p>Actions will be clipped to the range [-clip_actions, clip_actions]</p>
+</dd>
+</dl>
+<p>We provide three classes inherited from VecTask: <code class="docutils literal notranslate"><span class="pre">VecTaskPython</span></code>, <code class="docutils literal notranslate"><span class="pre">VecTaskCPU</span></code> and <code class="docutils literal notranslate"><span class="pre">VecTaskGPU</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">VecTaskPython</span></code> is used for all python tasks extended from BaseTask. This class implements the <code class="docutils literal notranslate"><span class="pre">step</span></code> method, which sends clipped actions from the RL algorithm to the task, triggers task’s <code class="docutils literal notranslate"><span class="pre">step</span></code> method, and sends back clipped observation buffer, reward buffer, reset buffer, and extras to the RL algorithm. This class also implements a <code class="docutils literal notranslate"><span class="pre">reset</span></code> method that steps the task with a close-to-zero action buffer and provides RL algorithm with an updated clipped observation buffer. This implementation can be modified based on needs of the task and RL library.</p>
+<p><code class="docutils literal notranslate"><span class="pre">VecTaskCPU</span></code> and <code class="docutils literal notranslate"><span class="pre">VecTaskGPU</span></code> are both designed to support C++ implementations. <code class="docutils literal notranslate"><span class="pre">VecTaskGPU</span></code> in particular is designed to work with CUDA implementations. Both classes implement <code class="docutils literal notranslate"><span class="pre">step</span></code> and <code class="docutils literal notranslate"><span class="pre">reset</span></code> functions that behave in similar fashion as <code class="docutils literal notranslate"><span class="pre">VecTaskPython</span></code>.</p>
+</div>
+</div>
+<div class="section" id="creating-a-new-task">
+<h2>Creating a New Task<a class="headerlink" href="#creating-a-new-task" title="Permalink to this headline">¶</a></h2>
+<p>Creating a new task is straight-forward using Isaac Gym’s RL framework. The first step is to create a new script file in python/rlgpu/tasks.</p>
+<p>To use Isaac Gym’s APIs, we need the following imports</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rlgpu.tasks.base.base_task</span> <span class="kn">import</span> <span class="n">BaseTask</span>
+<span class="kn">from</span> <span class="nn">isaacgym</span> <span class="kn">import</span> <span class="n">gymtorch</span>
+<span class="kn">from</span> <span class="nn">isaacgym</span> <span class="kn">import</span> <span class="n">gymapi</span>
+</pre></div>
+</div>
+<p>Then, we need to create a Task class that extends from BaseTask</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyNewTask</span><span class="p">(</span><span class="n">BaseTask</span><span class="p">):</span>
+</pre></div>
+</div>
+<p>In the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method of MyNewTask, make sure to make a call to BaseTask’s <code class="docutils literal notranslate"><span class="pre">__init__</span></code> to initialize the simulation</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="n">num_obs</span><span class="o">=</span><span class="n">num_obs</span><span class="p">,</span>
+    <span class="n">num_acts</span><span class="o">=</span><span class="n">num_acts</span><span class="p">,</span>
+    <span class="n">num_envs</span><span class="o">=</span><span class="n">num_envs</span><span class="p">,</span>
+    <span class="n">graphics_device</span><span class="o">=</span><span class="n">graphics_device</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, we can initialize state tensors that we may need for our task. For example, we can initialize the DOF state tensor</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dof_state_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gym</span><span class="o">.</span><span class="n">acquire_dof_state_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sim</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">dof_state</span> <span class="o">=</span> <span class="n">gymtorch</span><span class="o">.</span><span class="n">wrap_tensor</span><span class="p">(</span><span class="n">dof_state_tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are a few methods that must be implemented by a child class of BaseTask: <code class="docutils literal notranslate"><span class="pre">create_sim</span></code>, <code class="docutils literal notranslate"><span class="pre">pre_physics_step</span></code>, <code class="docutils literal notranslate"><span class="pre">post_physics_step</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_sim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># implement sim set up and environment creation here</span>
+    <span class="c1">#    - set up-axis</span>
+    <span class="c1">#    - call self.gym.create_sim</span>
+    <span class="c1">#    - create ground plane</span>
+    <span class="c1">#    - set up environments</span>
+
+<span class="k">def</span> <span class="nf">pre_physics_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
+    <span class="c1"># implement pre-physics simulation code here</span>
+    <span class="c1">#    - e.g. apply actions</span>
+
+<span class="k">def</span> <span class="nf">post_physics_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># implement post-physics simulation code here</span>
+    <span class="c1">#    - e.g. compute reward, compute observations</span>
+</pre></div>
+</div>
+<p>To launch the new task from <code class="docutils literal notranslate"><span class="pre">train.py</span></code> or <code class="docutils literal notranslate"><span class="pre">rlg_train.py</span></code>, add your new task to the imports in python/rlgpu/utils/launch_task.py</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rlgpu.task.my_new_task</span> <span class="kn">import</span> <span class="n">MyNewTask</span>
+</pre></div>
+</div>
+<p>To automatically load in task and training config files, add your task name to python/rlgpu/utils/config.py in <code class="docutils literal notranslate"><span class="pre">retrieve_cfg(args)</span></code>.</p>
+<p>Then, you can run your task with  <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">train.py</span> <span class="pre">--task</span> <span class="pre">MyNewTask</span></code> or <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">rlg_train.py</span> <span class="pre">--task</span> <span class="pre">MyNewTask</span></code></p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="domainrandomization.html" class="btn btn-neutral float-right" title="Domain Randomization" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Reinforcement Learning" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2019-2021, NVIDIA Corporation.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+Sample RL Framework
+####################
+
+Overview
+=========
+
+We provide a simple Reinforcement Learning framework that bridges simulation with RL. 
+As part of Isaac Gym, we include a minimal PyTorch impelementation of PPO, **rl-pytorch**, which can be used to train our sample tasks.
+In addition, we have more advanced examples of training with a third-party highly-optimized RL library, `rl_games <https://github.com/Denys88/rl_games>`_. This also demonstrates how our framework can be used with other RL libraries.
+
+To use **rl_games** the following instructions should be performed:
+
+    git clone https://github.com/Denys88/rl_games.git
+    git checkout tags/v1.0-alpha2
+    pip install -e .
+
+For all the sample tasks provided, we include training configurations for both rl-pytorch and rl_games, denoted with prefixes ``pytorch_ppo_*.yaml`` and ``rlg_*.yaml``. These files are located in python/rlgpu/cfg. The appropriate config file will be selected automatically based on the task being executed and the script that it is being launched from. To launch a task using rl-pytorch, run ``python train.py``, with rl_games, run ``python rlg_train.py`` from python/rlgpu.
+
+For a list of the sample tasks we provide, refer to the :ref:`List of Examples <rl-examples>`.
+
+Class Definition
+================
+
+There are two base classes defined for Isaac Gym's RL framework: ``base_task.py`` and ``vec_task.py``.
+These are located in python/tasks/base and are the fundamental core of the RL framework.
+
+BaseTask Class (base_task.py)
+-----------------------------
+
+The BaseTask class is designed to act as a parent class for all RL tasks using Isaac Gym's RL framework.
+It provides an interface for interaction with RL alrogithms and includes functionalities that are required for all RL tasks.
+
+BaseTask constructor takes a few arguments:
+
+num_obs
+    Number of observations for the task
+num_acts
+    Number of actions for the task
+num_envs
+    Number of environments in simulation
+graphics_device
+    Device to use for graphical display
+device
+    Device to use for simulation and task
+
+The ``__init__`` function of BaseTask initializes buffers required for RL on the device specified. These include observation buffer, reward buffer, reset buffer, progress buffer, randomization buffer, and an optional extras array for passing in any additional information to the RL algorithm. This function will then trigger a call to ``create_sim()``, which must be implemented by the extended classes. A call to ``prepare_sim()`` will also be made to initialize the internal data structures for simulation. If running with a viewer, this function will also initialize the viewer and create keyboard shortcuts for quitting the application (ESC) and disabling/enabling rendering (V). 
+
+The ``step`` function is designed to guide the workflow of each RL iteration. This function can be viewed in three parts: ``pre_physics_step``, ``simulate``, and ``post_physics_step``. ``pre_physics_step`` should be implemented to perform any computations required before stepping the physics simulation. As an example, applying actions from the policy should happen in ``pre_physics_step``. ``simulate`` is then called to step the physics simulation. ``post_physics_step`` should implement computations performed after stepping the physics simulation, e.g. computing rewards and observations.
+
+BaseTask also provides an implementation of ``render`` to step graphics if a viewer is initialized.
+
+Additionally, BaseTask provides an interface to perform Domain Randomization via the ``apply_randomizations`` method. For more details, please see :doc:`Domain Randomization <domainrandomization>`.
+
+VecTask Class (vec_task.py)
+---------------------------
+VecTask provides a vectorized wrapper of the task to interact directly with RL algorithms. When a task is executed, we wrap the specified task class in a VecTask class and pass this wrapper to the RL algorithm. Implementation details can be found in python/rlgpu/utils/launch_task.py.
+
+VecTask constructor takes a few argumets:
+
+task
+    Task instance to be executed (inherited from BaseTask)
+rl_device
+    Device to use for RL algorithm
+clip_observations
+    Observations will be clipped to the range [-clip_observation, clip_observations]
+clip_actions
+    Actions will be clipped to the range [-clip_actions, clip_actions]
+
+We provide three classes inherited from VecTask: ``VecTaskPython``, ``VecTaskCPU`` and ``VecTaskGPU``.
+
+``VecTaskPython`` is used for all python tasks extended from BaseTask. This class implements the ``step`` method, which sends clipped actions from the RL algorithm to the task, triggers task's ``step`` method, and sends back clipped observation buffer, reward buffer, reset buffer, and extras to the RL algorithm. This class also implements a ``reset`` method that steps the task with a close-to-zero action buffer and provides RL algorithm with an updated clipped observation buffer. This implementation can be modified based on needs of the task and RL library.
+
+``VecTaskCPU`` and ``VecTaskGPU`` are both designed to support C++ implementations. ``VecTaskGPU`` in particular is designed to work with CUDA implementations. Both classes implement ``step`` and ``reset`` functions that behave in similar fashion as ``VecTaskPython``. 
+
+
+Creating a New Task
+====================
+
+Creating a new task is straight-forward using Isaac Gym's RL framework. The first step is to create a new script file in python/rlgpu/tasks.
+
+To use Isaac Gym's APIs, we need the following imports
+
+.. code-block:: python
+
+    from rlgpu.tasks.base.base_task import BaseTask
+    from isaacgym import gymtorch
+    from isaacgym import gymapi
+
+Then, we need to create a Task class that extends from BaseTask
+
+.. code-block:: python
+
+    class MyNewTask(BaseTask):
+
+In the ``__init__`` method of MyNewTask, make sure to make a call to BaseTask's ``__init__`` to initialize the simulation
+
+.. code-block:: python
+
+    super().__init__(
+        num_obs=num_obs,
+        num_acts=num_acts,
+        num_envs=num_envs,
+        graphics_device=graphics_device,
+        device=device
+    )
+
+Then, we can initialize state tensors that we may need for our task. For example, we can initialize the DOF state tensor
+
+.. code-block:: python
+
+    dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
+    self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
+
+There are a few methods that must be implemented by a child class of BaseTask: ``create_sim``, ``pre_physics_step``, ``post_physics_step``.
+
+.. code-block:: python
+
+    def create_sim(self):
+        # implement sim set up and environment creation here
+        #    - set up-axis
+        #    - call self.gym.create_sim
+        #    - create ground plane
+        #    - set up environments
+
+    def pre_physics_step(self, actions):
+        # implement pre-physics simulation code here
+        #    - e.g. apply actions
+
+    def post_physics_step(self):
+        # implement post-physics simulation code here
+        #    - e.g. compute reward, compute observations
+
+To launch the new task from ``train.py`` or ``rlg_train.py``, add your new task to the imports in python/rlgpu/utils/launch_task.py
+
+.. code-block:: python
+
+    from rlgpu.task.my_new_task import MyNewTask
+
+To automatically load in task and training config files, add your task name to python/rlgpu/utils/config.py in ``retrieve_cfg(args)``.
+
+Then, you can run your task with  ``python train.py --task MyNewTask`` or ``python rlg_train.py --task MyNewTask``

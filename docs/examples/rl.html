@@ -1,0 +1,492 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Reinforcement Learning Examples &mdash; Isaac Gym  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/isaac_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Bundled Assets" href="assets.html" />
+    <link rel="prev" title="Programming Examples" href="simple.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Isaac Gym
+          
+
+          
+            
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../about_gym.html">About Isaac Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes.html">Release Notes</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="simple.html">Programming Examples</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Reinforcement Learning Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-command-line-options">Common Command Line Options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list-of-examples">List of Examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cartpole-cartpole-py">Cartpole (cartpole.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cartpole-y-up-cartpole-y-up-py">Cartpole Y-Up (cartpole_y_up.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ball-balance-ball-balance-py">Ball Balance (ball_balance.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ant-ant-py">Ant (ant.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#humanoid-humanoid-py">Humanoid (humanoid.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#franka-drawer-opening-franka-py">Franka Drawer Opening (franka.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nasa-ingenuity-helicopter">NASA Ingenuity Helicopter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shadow-hand-object-manipulation-shadow-hand-py">Shadow Hand Object Manipulation (shadow_hand.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shadow-hand-variant-tasks">Shadow Hand Variant Tasks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#quadcopter-quadcopter-py">Quadcopter (quadcopter.py)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anymal-anymal-py">ANYmal (anymal.py)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#reproducibility">Reproducibility</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="assets.html">Bundled Assets</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../programming/index.html">Programming</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rl/index.html">Reinforcement Learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faqs.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Isaac Gym</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Examples</a> &raquo;</li>
+        
+      <li>Reinforcement Learning Examples</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="reinforcement-learning-examples">
+<h1>Reinforcement Learning Examples<a class="headerlink" href="#reinforcement-learning-examples" title="Permalink to this headline">¶</a></h1>
+<p>Single-gpu training reinforcement learning examples can be launched from <code class="docutils literal notranslate"><span class="pre">python/rlgpu</span></code> with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">train.py</span></code> or <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">rlg_train.py</span></code>.</p>
+<p>When training with the viewer (not headless), you can press V to toggle viewer sync. Disabling viewer sync will improve performance, especially in GPU pipeline mode.  Viewer sync can be re-enabled at any time to check training progress.</p>
+<div class="section" id="common-command-line-options">
+<h2>Common Command Line Options<a class="headerlink" href="#common-command-line-options" title="Permalink to this headline">¶</a></h2>
+<dl class="option-list">
+<dt><kbd><span class="option">--help</span></kbd></dt>
+<dd><p>Prints out commandline options</p>
+</dd>
+<dt><kbd><span class="option">--task</span></kbd></dt>
+<dd><p>Select example task to run. Options are: BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, FrankaCabinet, Quadcopter, Anymal, ShadowHand, ShadowHandLSTM, ShadowHandFFOpenAI, ShadowHandFFOpenAITest, ShadowHandOpenAI, ShadowHandOpenAITest, Ingenuity. Default is <strong>Humanoid</strong>.</p>
+</dd>
+<dt><kbd><span class="option">--headless</span></kbd></dt>
+<dd><p>Run task without viewer (disabled by default).</p>
+</dd>
+<dt><kbd><span class="option">--logdir</span></kbd></dt>
+<dd><p>Directory to place log files for training. Default is <strong>logs/</strong>.</p>
+</dd>
+<dt><kbd><span class="option">--experiment</span></kbd></dt>
+<dd><p>Name of the experiment to be appended to log files. Default is the task name.</p>
+</dd>
+<dt><kbd><span class="option">--metadata</span></kbd></dt>
+<dd><p>Adds the name of the physics engine, sim device, type of the running task, domain randomization to the experiment name. It is used with <strong>–experiment</strong> flag and disabled by default.</p>
+</dd>
+<dt><kbd><span class="option">--sim_device</span></kbd></dt>
+<dd><p>Choose the device for running the simulation with PyTorch-like syntax. Can be <strong>cpu</strong> or <strong>cuda</strong>, with an optional device specification. Default is <strong>cuda:0</strong>.</p>
+</dd>
+<dt><kbd><span class="option">--pipeline</span></kbd></dt>
+<dd><p>Choose either the <strong>cpu</strong> or <strong>gpu</strong> pipeline for tensor operations. Default is <strong>gpu</strong>.</p>
+</dd>
+<dt><kbd><span class="option">--rl_device</span></kbd></dt>
+<dd><p>Choose device for running RL training. Default is <strong>cuda:0</strong>.</p>
+</dd>
+<dt><kbd><span class="option">--test</span></kbd></dt>
+<dd><p>Test trained policy, will run inference only, no training will be performed.</p>
+</dd>
+<dt><kbd><span class="option">--resume</span></kbd></dt>
+<dd><p>Iteration at which training or inference should resume from (rl-pytorch only).</p>
+</dd>
+<dt><kbd><span class="option">--seed</span></kbd></dt>
+<dd><p>Set a random seed. Set -1 to randomly generate a seed.</p>
+</dd>
+<dt><kbd><span class="option">--torch_deterministic</span></kbd></dt>
+<dd><p>Apply PyTorch deterministic mode settings (disabled by default).</p>
+</dd>
+<dt><kbd><span class="option">--max_iterations</span></kbd></dt>
+<dd><p>Overrides maximum number of PPO training iterations from config file.</p>
+</dd>
+<dt><kbd><span class="option">--num_envs</span></kbd></dt>
+<dd><p>Overrides number of environments from config file.</p>
+</dd>
+<dt><kbd><span class="option">--randomize</span></kbd></dt>
+<dd><p>Enable domain randomization (disabled by default).</p>
+</dd>
+<dt><kbd><span class="option">--physx</span></kbd></dt>
+<dd><p>Uses PhysX as the physics backend for simulation (enabled by default).</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All examples can be run on CPU or GPU and currently only support PhysX backend.</p>
+</div>
+</div>
+<div class="section" id="list-of-examples">
+<span id="rl-examples"></span><h2>List of Examples<a class="headerlink" href="#list-of-examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="cartpole-cartpole-py">
+<h3>Cartpole (cartpole.py)<a class="headerlink" href="#cartpole-cartpole-py" title="Permalink to this headline">¶</a></h3>
+<p>Cartpole is a simple example that shows usage of the DOF state tensors. Position and velocity data are used as observation for the cart and pole DOFs. Actions are applied as forces to the cart using <code class="docutils literal notranslate"><span class="pre">set_dof_actuation_force_tensor</span></code>. During reset, we use <code class="docutils literal notranslate"><span class="pre">set_dof_state_tensor_indexed</span></code> to set DOF position and velocity of the cart and pole to a randomized state.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Cartpole</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: cartpole.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_cartpole.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_cartpole.yaml</p></li>
+</ul>
+<img alt="../_images/cartpole.png" src="../_images/cartpole.png" />
+</div>
+<div class="section" id="cartpole-y-up-cartpole-y-up-py">
+<h3>Cartpole Y-Up (cartpole_y_up.py)<a class="headerlink" href="#cartpole-y-up-cartpole-y-up-py" title="Permalink to this headline">¶</a></h3>
+<p>This is the same learning task as the above Cartpole example.
+RL examples use Z-axis as up axis by default, this example demonstrates the use of Y-axis as the up axis.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">CartpoleYUp</span></code>.</p>
+</div>
+<div class="section" id="ball-balance-ball-balance-py">
+<h3>Ball Balance (ball_balance.py)<a class="headerlink" href="#ball-balance-ball-balance-py" title="Permalink to this headline">¶</a></h3>
+<p>This example trains balancing tables to balance a ball on the table top.
+This is a great example to showcase the use of force and torque sensors, as well as DOF states for the table and root states for the ball. In this example, the three-legged table has a force sensor attached to each leg using the <code class="docutils literal notranslate"><span class="pre">create_force_sensor</span></code> API. We use the force sensor tensor APIs to collect force and torque data on the legs, which guide position target ouputs produced by the policy. The example shows usage of <code class="docutils literal notranslate"><span class="pre">set_dof_position_target_tensor</span></code> to set position targets to keep the ball balanced on the table.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">BallBalance</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: ball_balance.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_ball_balance.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_ball.yaml</p></li>
+</ul>
+<img alt="../_images/rl_ballbalance.png" src="../_images/rl_ballbalance.png" />
+</div>
+<div class="section" id="ant-ant-py">
+<h3>Ant (ant.py)<a class="headerlink" href="#ant-ant-py" title="Permalink to this headline">¶</a></h3>
+<p>An example of a simple locomotion task, the goal is to train quadruped robots (ants) to run forward as fast as possible.
+The Ant task includes examples of utilizing Isaac Gym’s actor root state tensor, DOF state tensor, and force sensor tensor APIs.
+Actor root states provide data for the ant’s root body, including position, rotation, linear and angular velocities. This information can be used to detect whether the ant has been moving towards the desired direction and whether it has fallen or flipped over.
+DOF states are used to retrieve the position and velocity of each DOF for the ant, and force sensors are used to indicate contacts with the ground plane on the ant’s legs.</p>
+<p>Actions are applied onto the DOFs of the ants to allow it to move, using the <code class="docutils literal notranslate"><span class="pre">set_dof_actuation_force_tensor</span></code> API.</p>
+<p>During resets, we also show usage of <code class="docutils literal notranslate"><span class="pre">set_actor_root_state_tensor_indexed</span></code> and <code class="docutils literal notranslate"><span class="pre">set_dof_state_tensor_indexed</span></code> APIs for setting select ants into a valid starting state.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Ant</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: ant.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_ant.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_ant.yaml</p></li>
+</ul>
+<img alt="../_images/rl_ant.png" src="../_images/rl_ant.png" />
+</div>
+<div class="section" id="humanoid-humanoid-py">
+<h3>Humanoid (humanoid.py)<a class="headerlink" href="#humanoid-humanoid-py" title="Permalink to this headline">¶</a></h3>
+<p>The humanoid example is conceptually very similar to the Ant task.
+In this example, we also use actor root states to detect whether humanoids are been moving towards the desired direction and whether they have fallen.
+DOF states are used to retrieve the position and velocity of each DOF for the humanoids, and force sensors are used to indicate contacts with the ground plane on the humanoids’ feet.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Humanoid</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: humanoid.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_humanoid.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_humanoid.yaml</p></li>
+</ul>
+<img alt="../_images/rl_humanoid.png" src="../_images/rl_humanoid.png" />
+</div>
+<div class="section" id="franka-drawer-opening-franka-py">
+<h3>Franka Drawer Opening (franka.py)<a class="headerlink" href="#franka-drawer-opening-franka-py" title="Permalink to this headline">¶</a></h3>
+<p>The Franka example demonstrates interaction between Franka arm and cabinet, as well as setting states of objects inside the drawer.
+It also showcases control of the Franka arm using position targets.
+In this example, we use DOF state tensors to retrieve the state of the Franka arm, as well as the state of the drawer on the cabinet.
+Actions are applied using <code class="docutils literal notranslate"><span class="pre">set_dof_position_target_tensor</span></code> to set position targets for the Franka arm DOFs.</p>
+<p>During reset, we use indexed versions of APIs to reset Franka, cabinet, and objects inside drawer to their initial states. <code class="docutils literal notranslate"><span class="pre">set_actor_root_state_tensor_indexed</span></code> is used to reset objects inside drawer, <code class="docutils literal notranslate"><span class="pre">set_dof_position_target_tensor_indexed</span></code> is used to reset Franka, and <code class="docutils literal notranslate"><span class="pre">set_dof_state_tensor_indexed</span></code> is used to reset Franka and cabinet.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">FrankaCabinet</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: franka_cabinet.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_franka_cabinet.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_franka_cabinet.yaml</p></li>
+</ul>
+<img alt="../_images/rl_franka.png" src="../_images/rl_franka.png" />
+</div>
+<div class="section" id="nasa-ingenuity-helicopter">
+<h3>NASA Ingenuity Helicopter<a class="headerlink" href="#nasa-ingenuity-helicopter" title="Permalink to this headline">¶</a></h3>
+<p>This example trains a simplified model of NASA’s Ingenuity helicopter to navigate to a moving target.
+It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Ingenuity</span></code>.
+It showcases the use of velocity tensors and applying force vectors to rigid bodies.
+Note that we are applying force directly to the chassis, rather than simulating aerodynamics.
+This example also demonstrates using different values for gravitational forces, as well as dynamically writing a physics model from Python code at runtime.
+Ingenuity Helicopter visual 3D Model courtesy of NASA: <a class="reference external" href="https://mars.nasa.gov/resources/25043/mars-ingenuity-helicopter-3d-model/">https://mars.nasa.gov/resources/25043/mars-ingenuity-helicopter-3d-model/</a></p>
+<img alt="../_images/rl_ingenuity.png" src="../_images/rl_ingenuity.png" />
+</div>
+<div class="section" id="shadow-hand-object-manipulation-shadow-hand-py">
+<h3>Shadow Hand Object Manipulation (shadow_hand.py)<a class="headerlink" href="#shadow-hand-object-manipulation-shadow-hand-py" title="Permalink to this headline">¶</a></h3>
+<p>The Shadow Hand task is an example of a challenging dexterity manipulation task with complex contact dynamics.
+It resembles OpenAI’s <a class="reference external" href="https://openai.com/blog/learning-dexterity/">Learning Dexterity</a> project and <a class="reference external" href="https://github.com/openai/gym/tree/master/gym/envs/robotics">Robotics Shadow Hand</a> training environments.
+It also demonstrates the use of tendons in the Shadow Hand model.
+In this example, we use <code class="docutils literal notranslate"><span class="pre">get_asset_tendon_properties</span></code> and <code class="docutils literal notranslate"><span class="pre">set_asset_tendon_properties</span></code> to get and set tendon properties for the hand.
+Motion of the hand is controlled using position targets with <code class="docutils literal notranslate"><span class="pre">set_dof_position_target_tensor</span></code>.</p>
+<p>The goal is to orient the object in the hand to match the target orientation. There is a goal object that shows the target orientation to be achieved by the manipulated object.
+To reset both the target object and the object in hand, it is important to make <strong>one</strong> single call to <code class="docutils literal notranslate"><span class="pre">set_actor_root_state_tensor_indexed</span></code> to set the states for both objects.
+This task has 3 difficulty levels using different objects to manipulate - block, egg and pen and different observations schemes - <code class="docutils literal notranslate"><span class="pre">openai</span></code>, <code class="docutils literal notranslate"><span class="pre">full_no_vel</span></code>, <code class="docutils literal notranslate"><span class="pre">full</span></code>
+and <code class="docutils literal notranslate"><span class="pre">full_state</span></code> that can be set in the task config in <code class="docutils literal notranslate"><span class="pre">observationType</span></code> field. Moreover it supports asymmetric observations, when policy and value functions get different
+sets of observation.</p>
+<p>The basic version of the task can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">ShadowHand</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: shadow_hand.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_shadow_hand.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_shadow_hand.yaml</p></li>
+</ul>
+<p>Observations types:</p>
+<ul class="simple">
+<li><p><strong>openai</strong>: fingertip positions, object position and relative to the goal object orientation. The same set of observations as used in OpenAI dexterity manipulation project: <a class="reference external" href="https://openai.com/blog/learning-dexterity/">https://openai.com/blog/learning-dexterity/</a></p></li>
+<li><p><strong>full_no_vel</strong>: the same as <code class="docutils literal notranslate"><span class="pre">full</span></code> but without any velocity information for joints, object and fingertips</p></li>
+<li><p><strong>full</strong>: a standard set of observations with joint positions and velocities, object pose, linear and angular velocities, the goal pose and fingertip transforms, and their linear and angular velocities</p></li>
+<li><p><strong>full_state</strong>: <code class="docutils literal notranslate"><span class="pre">full</span></code> set of observations plus readings from force-torque sensors attached to the fingertips and joint forces sensors. This is the default used by the base <strong>ShadowHand</strong> task</p></li>
+</ul>
+</div>
+<div class="section" id="shadow-hand-variant-tasks">
+<h3>Shadow Hand Variant Tasks<a class="headerlink" href="#shadow-hand-variant-tasks" title="Permalink to this headline">¶</a></h3>
+<p>In addition to the basic version of this task, several other variants are also available, including ones that more closely match the OpenAI Learning Dexterity project. These are as follows:</p>
+<ul class="simple">
+<li><p><strong>ShadowHandLSTM</strong></p>
+<ul>
+<li><p>This variant uses the more restrictive <strong>full_no_vel</strong> observations, and uses LSTM policy and value networks instead of feed forward networks</p></li>
+<li><p>Requires using <code class="docutils literal notranslate"><span class="pre">rlg_train.py</span></code> to make use of the <code class="docutils literal notranslate"><span class="pre">rl_games</span></code> RL library</p></li>
+</ul>
+</li>
+<li><p><strong>ShadowHandFFOpenAI</strong></p>
+<ul>
+<li><p>This variant uses the <strong>openai</strong> observations in the policy network, but asymmetric observations of the <strong>full_state</strong> in the value network</p></li>
+<li><p>Both networks trained are feed forward networks - one of the options explored in the Learning Dexterity project</p></li>
+<li><p>Various Domain randomizations are enabled in this variant</p></li>
+<li><p>This variant is intended for training purposes, and has a tighter success tolerance than that used in OpenAI’s experiment</p></li>
+</ul>
+</li>
+<li><p><strong>ShadowHandOpenAI</strong></p>
+<ul>
+<li><p>Identical to the <strong>ShadowHandFFOpenAI</strong> variant, but using LSTM value and policy networks - the main option explored in OpenAI’s Learning Dexterity project</p></li>
+<li><p>Requires using <code class="docutils literal notranslate"><span class="pre">rlg_train.py</span></code> to make use of the <code class="docutils literal notranslate"><span class="pre">rl_games</span></code> RL library</p></li>
+</ul>
+</li>
+<li><p><strong>ShadowHandFFOpenAITest</strong></p>
+<ul>
+<li><p>A testing variant of the <strong>ShadowHandFFOpenAI</strong> task with the lower success tolerance used in OpenAI’s experiment</p></li>
+<li><p>This variant calculates and prints ongoing averages of consecutive successes during the run</p></li>
+</ul>
+</li>
+<li><p><strong>ShadowHandOpenAITest</strong></p>
+<ul>
+<li><p>Identical to the <strong>ShadowHandFFOpenAITest</strong> variant, but using LSTM value and policy networks</p></li>
+<li><p>Requires using <code class="docutils literal notranslate"><span class="pre">rlg_train.py</span></code> to make use of the <code class="docutils literal notranslate"><span class="pre">rl_games</span></code> RL library</p></li>
+</ul>
+</li>
+</ul>
+<img alt="../_images/rl_shadowhand.png" src="../_images/rl_shadowhand.png" />
+</div>
+<div class="section" id="quadcopter-quadcopter-py">
+<h3>Quadcopter (quadcopter.py)<a class="headerlink" href="#quadcopter-quadcopter-py" title="Permalink to this headline">¶</a></h3>
+<p>This example trains a very simple quadcopter model to reach and hover near a fixed position.  The quadcopter model is generated procedurally and doesn’t actually include any rotating blades.  Lift is achieved by applying thrust forces to the “rotor” bodies, which are modeled as flat cylinders.  This is a good example of using LOCAL_SPACE forces.  In addition to thrust, the pitch and roll of each rotor is controlled using DOF position targets.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Quadcopter</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: quadcopter.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_quadcopter.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_quadcopter.yaml</p></li>
+</ul>
+<img alt="../_images/rl_quadcopter.png" src="../_images/rl_quadcopter.png" />
+</div>
+<div class="section" id="anymal-anymal-py">
+<h3>ANYmal (anymal.py)<a class="headerlink" href="#anymal-anymal-py" title="Permalink to this headline">¶</a></h3>
+<p>This example trains a model of the ANYmal quadruped robot from ANYbotics to follow randomly chosen x, y, and yaw target velocities.</p>
+<p>It can be launched with command line argument <code class="docutils literal notranslate"><span class="pre">--task</span> <span class="pre">Anymal</span></code>.</p>
+<p>Config files used for this task are:</p>
+<ul class="simple">
+<li><p><strong>Task config</strong>: anymal.yaml</p></li>
+<li><p><strong>rl-pytorch training config</strong>: pytorch_ppo_anymal.yaml</p></li>
+<li><p><strong>rl_games training config</strong>: rlg_anymal.yaml</p></li>
+</ul>
+<img alt="../_images/rl_anymal.png" src="../_images/rl_anymal.png" />
+</div>
+</div>
+<div class="section" id="reproducibility">
+<h2>Reproducibility<a class="headerlink" href="#reproducibility" title="Permalink to this headline">¶</a></h2>
+<p>To achieve deterministic behaviour on multiple training runs, a seed value can be set in the training config file for each task. This will allow for individual runs of the same task to be deterministic when executed on the same machine and system setup. Alternatively, a seed can also be set via command line argument <code class="docutils literal notranslate"><span class="pre">--seed</span> <span class="pre">&lt;seed&gt;</span></code> to override any settings in config files. If no seed is specified in either config files or command line arguments, we default to generating a random seed. In such case, individual runs of the same task should not be expected to be deterministic. For convenience, we also support setting <code class="docutils literal notranslate"><span class="pre">--seed</span> <span class="pre">-1</span></code> to generate a random seed, which will override any seed values set in config files. By default, we have explicitly set all seed values in config files to be -1.</p>
+<p>We have also introduced a <code class="docutils literal notranslate"><span class="pre">--torch_deterministic</span></code> flag for executing RL trainings. Enabling this flag will apply additional settings to PyTorch that can force the usage of deterministic algorithms in PyTorch, but may also negatively impact run-time performance. For more details regarding PyTorch reproducibility, refer to <a class="reference external" href="https://pytorch.org/docs/stable/notes/randomness.html">https://pytorch.org/docs/stable/notes/randomness.html</a>. If both <code class="docutils literal notranslate"><span class="pre">--torch_deterministic</span></code> and <code class="docutils literal notranslate"><span class="pre">--seed</span> <span class="pre">-1</span></code> are set, the seed value will be fixed to 42.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="assets.html" class="btn btn-neutral float-right" title="Bundled Assets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="simple.html" class="btn btn-neutral float-left" title="Programming Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2019-2021, NVIDIA Corporation.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

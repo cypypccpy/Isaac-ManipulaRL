@@ -1,0 +1,270 @@
+Reinforcement Learning Examples
+################################
+
+Single-gpu training reinforcement learning examples can be launched from ``python/rlgpu`` with ``python train.py`` or ``python rlg_train.py``.
+
+When training with the viewer (not headless), you can press V to toggle viewer sync. Disabling viewer sync will improve performance, especially in GPU pipeline mode.  Viewer sync can be re-enabled at any time to check training progress.
+
+Common Command Line Options
+============================
+
+--help
+    Prints out commandline options
+--task
+    Select example task to run. Options are: BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, FrankaCabinet, Quadcopter, Anymal, ShadowHand, ShadowHandLSTM, ShadowHandFFOpenAI, ShadowHandFFOpenAITest, ShadowHandOpenAI, ShadowHandOpenAITest, Ingenuity. Default is **Humanoid**.
+--headless
+    Run task without viewer (disabled by default).
+--logdir
+    Directory to place log files for training. Default is **logs/**.
+--experiment
+    Name of the experiment to be appended to log files. Default is the task name.
+--metadata
+    Adds the name of the physics engine, sim device, type of the running task, domain randomization to the experiment name. It is used with **--experiment** flag and disabled by default.
+--sim_device
+    Choose the device for running the simulation with PyTorch-like syntax. Can be **cpu** or **cuda**, with an optional device specification. Default is **cuda:0**.
+--pipeline
+    Choose either the **cpu** or **gpu** pipeline for tensor operations. Default is **gpu**.
+--rl_device
+    Choose device for running RL training. Default is **cuda:0**.
+--test
+    Test trained policy, will run inference only, no training will be performed.
+--resume
+    Iteration at which training or inference should resume from (rl-pytorch only).
+--seed
+    Set a random seed. Set -1 to randomly generate a seed.
+--torch_deterministic
+    Apply PyTorch deterministic mode settings (disabled by default).
+--max_iterations
+    Overrides maximum number of PPO training iterations from config file.
+--num_envs
+    Overrides number of environments from config file.
+--randomize
+    Enable domain randomization (disabled by default).
+--physx
+    Uses PhysX as the physics backend for simulation (enabled by default).
+
+
+.. note::
+    All examples can be run on CPU or GPU and currently only support PhysX backend.
+
+.. _rl-examples:
+
+List of Examples
+=================
+
+.. cartpole.py:
+
+Cartpole (cartpole.py)
+----------------------
+Cartpole is a simple example that shows usage of the DOF state tensors. Position and velocity data are used as observation for the cart and pole DOFs. Actions are applied as forces to the cart using ``set_dof_actuation_force_tensor``. During reset, we use ``set_dof_state_tensor_indexed`` to set DOF position and velocity of the cart and pole to a randomized state.
+
+It can be launched with command line argument ``--task Cartpole``.
+
+Config files used for this task are:
+
+- **Task config**: cartpole.yaml
+- **rl-pytorch training config**: pytorch_ppo_cartpole.yaml
+- **rl_games training config**: rlg_cartpole.yaml
+
+.. image:: ../images/cartpole.png
+
+.. cartpole_y_up.py
+
+Cartpole Y-Up (cartpole_y_up.py)
+--------------------------------
+This is the same learning task as the above Cartpole example.
+RL examples use Z-axis as up axis by default, this example demonstrates the use of Y-axis as the up axis.
+
+It can be launched with command line argument ``--task CartpoleYUp``.
+
+.. ball_balance.py:
+
+Ball Balance (ball_balance.py)
+------------------------------
+This example trains balancing tables to balance a ball on the table top.
+This is a great example to showcase the use of force and torque sensors, as well as DOF states for the table and root states for the ball. In this example, the three-legged table has a force sensor attached to each leg using the ``create_force_sensor`` API. We use the force sensor tensor APIs to collect force and torque data on the legs, which guide position target ouputs produced by the policy. The example shows usage of ``set_dof_position_target_tensor`` to set position targets to keep the ball balanced on the table.
+
+It can be launched with command line argument ``--task BallBalance``.
+
+Config files used for this task are:
+
+- **Task config**: ball_balance.yaml
+- **rl-pytorch training config**: pytorch_ppo_ball_balance.yaml
+- **rl_games training config**: rlg_ball.yaml
+
+.. image:: ../images/rl_ballbalance.png
+
+.. ant.py:
+
+Ant (ant.py)
+------------
+An example of a simple locomotion task, the goal is to train quadruped robots (ants) to run forward as fast as possible.
+The Ant task includes examples of utilizing Isaac Gym's actor root state tensor, DOF state tensor, and force sensor tensor APIs.
+Actor root states provide data for the ant's root body, including position, rotation, linear and angular velocities. This information can be used to detect whether the ant has been moving towards the desired direction and whether it has fallen or flipped over.
+DOF states are used to retrieve the position and velocity of each DOF for the ant, and force sensors are used to indicate contacts with the ground plane on the ant's legs.
+
+Actions are applied onto the DOFs of the ants to allow it to move, using the ``set_dof_actuation_force_tensor`` API.
+
+During resets, we also show usage of ``set_actor_root_state_tensor_indexed`` and ``set_dof_state_tensor_indexed`` APIs for setting select ants into a valid starting state.
+
+It can be launched with command line argument ``--task Ant``.
+
+Config files used for this task are:
+
+- **Task config**: ant.yaml
+- **rl-pytorch training config**: pytorch_ppo_ant.yaml
+- **rl_games training config**: rlg_ant.yaml
+
+.. image:: ../images/rl_ant.png
+
+.. humanoid.py
+
+Humanoid (humanoid.py)
+----------------------
+The humanoid example is conceptually very similar to the Ant task.
+In this example, we also use actor root states to detect whether humanoids are been moving towards the desired direction and whether they have fallen.
+DOF states are used to retrieve the position and velocity of each DOF for the humanoids, and force sensors are used to indicate contacts with the ground plane on the humanoids' feet.
+
+It can be launched with command line argument ``--task Humanoid``.
+
+Config files used for this task are:
+
+- **Task config**: humanoid.yaml
+- **rl-pytorch training config**: pytorch_ppo_humanoid.yaml
+- **rl_games training config**: rlg_humanoid.yaml
+
+.. image:: ../images/rl_humanoid.png
+
+.. franka.py:
+
+Franka Drawer Opening (franka.py)
+---------------------------------
+The Franka example demonstrates interaction between Franka arm and cabinet, as well as setting states of objects inside the drawer.
+It also showcases control of the Franka arm using position targets.
+In this example, we use DOF state tensors to retrieve the state of the Franka arm, as well as the state of the drawer on the cabinet.
+Actions are applied using ``set_dof_position_target_tensor`` to set position targets for the Franka arm DOFs.
+
+During reset, we use indexed versions of APIs to reset Franka, cabinet, and objects inside drawer to their initial states. ``set_actor_root_state_tensor_indexed`` is used to reset objects inside drawer, ``set_dof_position_target_tensor_indexed`` is used to reset Franka, and ``set_dof_state_tensor_indexed`` is used to reset Franka and cabinet.
+
+It can be launched with command line argument ``--task FrankaCabinet``.
+
+Config files used for this task are:
+
+- **Task config**: franka_cabinet.yaml
+- **rl-pytorch training config**: pytorch_ppo_franka_cabinet.yaml
+- **rl_games training config**: rlg_franka_cabinet.yaml
+
+.. image:: ../images/rl_franka.png
+
+.. ingenuity.py:
+
+NASA Ingenuity Helicopter
+---------------------------------
+This example trains a simplified model of NASA's Ingenuity helicopter to navigate to a moving target.
+It can be launched with command line argument ``--task Ingenuity``.
+It showcases the use of velocity tensors and applying force vectors to rigid bodies.
+Note that we are applying force directly to the chassis, rather than simulating aerodynamics.
+This example also demonstrates using different values for gravitational forces, as well as dynamically writing a physics model from Python code at runtime.
+Ingenuity Helicopter visual 3D Model courtesy of NASA: https://mars.nasa.gov/resources/25043/mars-ingenuity-helicopter-3d-model/
+
+.. image:: ../images/rl_ingenuity.png
+
+.. shadow_hand.py
+
+Shadow Hand Object Manipulation (shadow_hand.py)
+------------------------------------------------
+The Shadow Hand task is an example of a challenging dexterity manipulation task with complex contact dynamics.
+It resembles OpenAI's `Learning Dexterity <https://openai.com/blog/learning-dexterity/>`_ project and `Robotics Shadow Hand <https://github.com/openai/gym/tree/master/gym/envs/robotics>`_ training environments.
+It also demonstrates the use of tendons in the Shadow Hand model.
+In this example, we use ``get_asset_tendon_properties`` and ``set_asset_tendon_properties`` to get and set tendon properties for the hand.
+Motion of the hand is controlled using position targets with ``set_dof_position_target_tensor``.
+
+The goal is to orient the object in the hand to match the target orientation. There is a goal object that shows the target orientation to be achieved by the manipulated object.
+To reset both the target object and the object in hand, it is important to make **one** single call to ``set_actor_root_state_tensor_indexed`` to set the states for both objects.
+This task has 3 difficulty levels using different objects to manipulate - block, egg and pen and different observations schemes - ``openai``, ``full_no_vel``, ``full``
+and ``full_state`` that can be set in the task config in ``observationType`` field. Moreover it supports asymmetric observations, when policy and value functions get different
+sets of observation.
+
+The basic version of the task can be launched with command line argument ``--task ShadowHand``.
+
+Config files used for this task are:
+
+- **Task config**: shadow_hand.yaml
+- **rl-pytorch training config**: pytorch_ppo_shadow_hand.yaml
+- **rl_games training config**: rlg_shadow_hand.yaml
+
+Observations types:
+
+- **openai**: fingertip positions, object position and relative to the goal object orientation. The same set of observations as used in OpenAI dexterity manipulation project: https://openai.com/blog/learning-dexterity/
+- **full_no_vel**: the same as ``full`` but without any velocity information for joints, object and fingertips
+- **full**: a standard set of observations with joint positions and velocities, object pose, linear and angular velocities, the goal pose and fingertip transforms, and their linear and angular velocities
+- **full_state**: ``full`` set of observations plus readings from force-torque sensors attached to the fingertips and joint forces sensors. This is the default used by the base **ShadowHand** task
+
+Shadow Hand Variant Tasks
+-------------------------
+
+In addition to the basic version of this task, several other variants are also available, including ones that more closely match the OpenAI Learning Dexterity project. These are as follows:
+
+- **ShadowHandLSTM**
+
+  + This variant uses the more restrictive **full_no_vel** observations, and uses LSTM policy and value networks instead of feed forward networks
+  + Requires using ``rlg_train.py`` to make use of the ``rl_games`` RL library
+- **ShadowHandFFOpenAI**
+
+  + This variant uses the **openai** observations in the policy network, but asymmetric observations of the **full_state** in the value network
+  + Both networks trained are feed forward networks - one of the options explored in the Learning Dexterity project
+  + Various Domain randomizations are enabled in this variant
+  + This variant is intended for training purposes, and has a tighter success tolerance than that used in OpenAI's experiment
+- **ShadowHandOpenAI**
+
+  + Identical to the **ShadowHandFFOpenAI** variant, but using LSTM value and policy networks - the main option explored in OpenAI's Learning Dexterity project
+  + Requires using ``rlg_train.py`` to make use of the ``rl_games`` RL library
+- **ShadowHandFFOpenAITest**
+
+  + A testing variant of the **ShadowHandFFOpenAI** task with the lower success tolerance used in OpenAI's experiment
+  + This variant calculates and prints ongoing averages of consecutive successes during the run
+- **ShadowHandOpenAITest**
+
+  + Identical to the **ShadowHandFFOpenAITest** variant, but using LSTM value and policy networks
+  + Requires using ``rlg_train.py`` to make use of the ``rl_games`` RL library
+
+.. image:: ../images/rl_shadowhand.png
+
+
+.. quadcopter.py:
+
+Quadcopter (quadcopter.py)
+---------------------------
+This example trains a very simple quadcopter model to reach and hover near a fixed position.  The quadcopter model is generated procedurally and doesn't actually include any rotating blades.  Lift is achieved by applying thrust forces to the "rotor" bodies, which are modeled as flat cylinders.  This is a good example of using LOCAL_SPACE forces.  In addition to thrust, the pitch and roll of each rotor is controlled using DOF position targets.
+
+It can be launched with command line argument ``--task Quadcopter``.
+
+Config files used for this task are:
+
+- **Task config**: quadcopter.yaml
+- **rl-pytorch training config**: pytorch_ppo_quadcopter.yaml
+- **rl_games training config**: rlg_quadcopter.yaml
+
+.. image:: ../images/rl_quadcopter.png
+
+.. anymal.py:
+
+ANYmal (anymal.py)
+---------------------------
+This example trains a model of the ANYmal quadruped robot from ANYbotics to follow randomly chosen x, y, and yaw target velocities.
+
+It can be launched with command line argument ``--task Anymal``.
+
+Config files used for this task are:
+
+- **Task config**: anymal.yaml
+- **rl-pytorch training config**: pytorch_ppo_anymal.yaml
+- **rl_games training config**: rlg_anymal.yaml
+
+.. image:: ../images/rl_anymal.png
+
+Reproducibility
+===============
+To achieve deterministic behaviour on multiple training runs, a seed value can be set in the training config file for each task. This will allow for individual runs of the same task to be deterministic when executed on the same machine and system setup. Alternatively, a seed can also be set via command line argument ``--seed <seed>`` to override any settings in config files. If no seed is specified in either config files or command line arguments, we default to generating a random seed. In such case, individual runs of the same task should not be expected to be deterministic. For convenience, we also support setting ``--seed -1`` to generate a random seed, which will override any seed values set in config files. By default, we have explicitly set all seed values in config files to be -1.
+
+We have also introduced a ``--torch_deterministic`` flag for executing RL trainings. Enabling this flag will apply additional settings to PyTorch that can force the usage of deterministic algorithms in PyTorch, but may also negatively impact run-time performance. For more details regarding PyTorch reproducibility, refer to https://pytorch.org/docs/stable/notes/randomness.html. If both ``--torch_deterministic`` and ``--seed -1`` are set, the seed value will be fixed to 42.

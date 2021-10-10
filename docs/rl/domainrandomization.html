@@ -1,0 +1,454 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Domain Randomization &mdash; Isaac Gym  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/isaac_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Frequently Asked Questions" href="../faqs.html" />
+    <link rel="prev" title="Sample RL Framework" href="framework.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Isaac Gym
+          
+
+          
+            
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../about_gym.html">About Isaac Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../programming/index.html">Programming</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Reinforcement Learning</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="framework.html">Sample RL Framework</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Domain Randomization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#domain-randomization-dictionary">Domain Randomization Dictionary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yaml-interface">YAML Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-domain-randomizations">Custom domain randomizations</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faqs.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Isaac Gym</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Reinforcement Learning</a> &raquo;</li>
+        
+      <li>Domain Randomization</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="domain-randomization">
+<h1>Domain Randomization<a class="headerlink" href="#domain-randomization" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>We sometimes need our reinforcement learning agents to be robust to different physics than they are trained with, such as when attempting a sim2real policy transfer. Using domain randomization, we repeatedly randomize the simulation dynamics during training in order to learn a good policy under a wide range of physical parameters.</p>
+<p>Isaac Gym supports “on the fly” domain randomization, allowing dynamics to be changed when resetting the environment, but without requiring reloading of assets. This allows us to efficiently apply domain randomizations without common overheads like re-parsing asset files. Domain randomization must take place at environment reset time, as some environment properties are reset when applying randomizations at the physics simulation level.</p>
+<p>We provide two interfaces to add domain randomization to your <code class="docutils literal notranslate"><span class="pre">rlgpu</span></code> tasks:</p>
+<ol class="arabic simple">
+<li><p>Adding domain randomization parameters to your task’s YAML config</p></li>
+<li><p>Directly calling the <code class="docutils literal notranslate"><span class="pre">apply_randomizations</span></code> class method</p></li>
+</ol>
+<p>Underneath both interfaces is a nested dictionary that allows you to fully specify which parameters to randomize, what distribution to sample for each parameter, and an option to schedule when the randomizations are applied or anneal the range over time. We will first discuss all the “knobs and dials” you can tune in this dictionary, and then how to incorporate either of the interfaces within your tasks.</p>
+</div>
+<div class="section" id="domain-randomization-dictionary">
+<h2>Domain Randomization Dictionary<a class="headerlink" href="#domain-randomization-dictionary" title="Permalink to this headline">¶</a></h2>
+<p>We will first explain what can be randomized in the scene and the sampling distributions and schedulers available. There are four main parameter groups that support randomization. They are:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">observations</span></code></dt><dd><ul>
+<li><p>Add noise directly to the agent observations</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">actions</span></code></dt><dd><ul>
+<li><p>Add noise directly to the agent actions</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">sim_params</span></code></dt><dd><ul>
+<li><p>Add noise to physical parameters defined for the entire scene, such as <code class="docutils literal notranslate"><span class="pre">gravity</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">actor_params</span></code></dt><dd><ul>
+<li><p>Add noise to properties belonging to your actors, such as the <code class="docutils literal notranslate"><span class="pre">dof_properties</span></code> of a ShadowHand</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>For each parameter you wish to randomize, you can specify the following settings:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">distribution</span></code></dt><dd><ul>
+<li><p>The distribution to generate a sample <code class="docutils literal notranslate"><span class="pre">x</span></code> from.</p></li>
+<li><dl class="simple">
+<dt>Choices: <code class="docutils literal notranslate"><span class="pre">uniform</span></code>, <code class="docutils literal notranslate"><span class="pre">loguniform</span></code>, <code class="docutils literal notranslate"><span class="pre">uniform</span></code>.</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">~</span> <span class="pre">unif(a,</span> <span class="pre">b)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">~</span> <span class="pre">exp(unif(log(a),</span> <span class="pre">log(b)))</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">~</span> <span class="pre">normal(a,</span> <span class="pre">b)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Parameters <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> are defined by the <code class="docutils literal notranslate"><span class="pre">range</span></code> setting.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt><dd><ul>
+<li><p>Specified as tuple <code class="docutils literal notranslate"><span class="pre">[a,</span> <span class="pre">b]</span></code> of real numbers.</p></li>
+<li><p>For <code class="docutils literal notranslate"><span class="pre">uniform</span></code> and <code class="docutils literal notranslate"><span class="pre">loguniform</span></code> distributions, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> are the lower and upper bounds.</p></li>
+<li><p>For <code class="docutils literal notranslate"><span class="pre">uniform</span></code>, <code class="docutils literal notranslate"><span class="pre">a</span></code> is the distribution mean and <code class="docutils literal notranslate"><span class="pre">b</span></code> is the variance.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">operation</span></code></dt><dd><ul>
+<li><p>Defines how the generated sample <code class="docutils literal notranslate"><span class="pre">x</span></code> will be applied to the original simulation parameter.</p></li>
+<li><dl class="simple">
+<dt>Choices: <code class="docutils literal notranslate"><span class="pre">additive</span></code>, <code class="docutils literal notranslate"><span class="pre">scaling</span></code></dt><dd><ul>
+<li><p>For <code class="docutils literal notranslate"><span class="pre">additive</span></code> noise, add the sample to the original value.</p></li>
+<li><p>For <code class="docutils literal notranslate"><span class="pre">scaling</span></code> noise, multiply the original value by the sample.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">schedule</span></code></dt><dd><ul>
+<li><p>Optional parameter to specify how to change the randomization distribution over time</p></li>
+<li><dl class="simple">
+<dt>Choices:  <code class="docutils literal notranslate"><span class="pre">constant</span></code>, <code class="docutils literal notranslate"><span class="pre">linear</span></code></dt><dd><ul>
+<li><p>For a <code class="docutils literal notranslate"><span class="pre">constant</span></code> schedule, randomizations are only applied after <code class="docutils literal notranslate"><span class="pre">schedule_steps</span></code> frames.</p></li>
+<li><p>For a <code class="docutils literal notranslate"><span class="pre">linear</span></code> schedule, linearly interpolate between no randomization and maximum randomization as defined by your <code class="docutils literal notranslate"><span class="pre">range</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">schedule_steps</span></code></dt><dd><ul>
+<li><p>Integer frame count used in <code class="docutils literal notranslate"><span class="pre">schedule</span></code> feature</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>We additionally can define a <code class="docutils literal notranslate"><span class="pre">frequency</span></code> parameter that will specify how often (in number of environment steps) to wait before applying the next randomization. Observation and action noise is randomized every frame, but the range of randomization is updated per the schedule only every <code class="docutils literal notranslate"><span class="pre">frequency</span></code> environment steps.</p>
+</div>
+<div class="section" id="yaml-interface">
+<h2>YAML Interface<a class="headerlink" href="#yaml-interface" title="Permalink to this headline">¶</a></h2>
+<p>Now that we know what options are available for domain randomization, let’s put it all together in the YAML config. In your <cite>rlgpu/cfg</cite> yaml file, you can specify your domain randomization parameters under the <code class="docutils literal notranslate"><span class="pre">task</span></code> key. First, we turn on domain randomization by setting <code class="docutils literal notranslate"><span class="pre">randomize</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">task</span><span class="p">:</span>
+    <span class="n">randomize</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="n">randomization_params</span><span class="p">:</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>Next, we will define our parameters under the <code class="docutils literal notranslate"><span class="pre">randomization_params</span></code> keys. Here you can see how we used the previous settings to define some randomization parameters for a ShadowHand cube manipulation task:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">randomization_params</span><span class="p">:</span>
+    <span class="n">frequency</span><span class="p">:</span> <span class="mi">600</span>  <span class="c1"># Define how many frames between generating new randomizations</span>
+    <span class="n">observations</span><span class="p">:</span>
+        <span class="nb">range</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">.05</span><span class="p">]</span>
+        <span class="n">operation</span><span class="p">:</span> <span class="s2">&quot;additive&quot;</span>
+        <span class="n">distribution</span><span class="p">:</span> <span class="s2">&quot;uniform&quot;</span>
+        <span class="n">schedule</span><span class="p">:</span> <span class="s2">&quot;constant&quot;</span>  <span class="c1"># turn on noise after `schedule_steps` num steps</span>
+        <span class="n">schedule_steps</span><span class="p">:</span> <span class="mi">5000</span>
+    <span class="n">actions</span><span class="p">:</span>
+        <span class="nb">range</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">.05</span><span class="p">]</span>
+        <span class="n">operation</span><span class="p">:</span> <span class="s2">&quot;additive&quot;</span>
+        <span class="n">distribution</span><span class="p">:</span> <span class="s2">&quot;uniform&quot;</span>
+        <span class="n">schedule</span><span class="p">:</span> <span class="s2">&quot;linear&quot;</span>  <span class="c1"># linearly interpolate between 0 randomization and full range</span>
+        <span class="n">schedule_steps</span><span class="p">:</span> <span class="mi">5000</span>
+    <span class="n">sim_params</span><span class="p">:</span>
+        <span class="n">gravity</span><span class="p">:</span>
+            <span class="nb">range</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]</span>
+            <span class="n">operation</span><span class="p">:</span> <span class="s2">&quot;additive&quot;</span>
+            <span class="n">distribution</span><span class="p">:</span> <span class="s2">&quot;uniform&quot;</span>
+    <span class="n">actor_params</span><span class="p">:</span>
+        <span class="n">hand</span><span class="p">:</span>
+            <span class="n">color</span><span class="p">:</span> <span class="kc">True</span>
+            <span class="n">dof_properties</span><span class="p">:</span>
+                <span class="n">upper</span><span class="p">:</span>
+                    <span class="nb">range</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">]</span>
+                    <span class="n">operation</span><span class="p">:</span> <span class="s2">&quot;additive&quot;</span>
+                    <span class="n">distribution</span><span class="p">:</span> <span class="s2">&quot;uniform&quot;</span>
+        <span class="n">cube</span><span class="p">:</span>
+            <span class="n">rigid_body_properties</span><span class="p">:</span>
+                <span class="n">mass</span><span class="p">:</span>
+                    <span class="nb">range</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]</span>
+                    <span class="n">operation</span><span class="p">:</span> <span class="s2">&quot;scaling&quot;</span>
+                    <span class="n">distribution</span><span class="p">:</span> <span class="s2">&quot;uniform&quot;</span>
+</pre></div>
+</div>
+<p>Note how we structured the <code class="docutils literal notranslate"><span class="pre">actor_params</span></code> randomizations. When creating actors using <code class="docutils literal notranslate"><span class="pre">gym.create_actor</span></code>, you have the option to specify a <cite>name</cite> for your actor. We figure out which randomizations to apply to actors based on this <cite>name</cite> option. <strong>To use domain randomization, your agents must have the same name in</strong> <code class="docutils literal notranslate"><span class="pre">create_actor</span></code> <strong>and in the randomization YAML</strong>. In our case, we wish to randomize all ShadowHand instances the same way, so we will name all our ShadowHand actors as <code class="docutils literal notranslate"><span class="pre">hand</span></code>. Depending on the asset, you have access to randomize <code class="docutils literal notranslate"><span class="pre">rigid_body_properties</span></code>, <code class="docutils literal notranslate"><span class="pre">rigid_shape_properties</span></code>, <code class="docutils literal notranslate"><span class="pre">dof_properties</span></code>, and <code class="docutils literal notranslate"><span class="pre">tendon_properties</span></code>. We also include an option to set the <code class="docutils literal notranslate"><span class="pre">color</span></code> of each rigid body in an actor (mostly for debugging purposes), but do not suppot extensive visual randomizations (like lighting and camera directions) currently. The exact properties available are listed as follows.</p>
+<p><strong>rigid_body_properties</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">mass</span> <span class="c1"># mass value, in kg</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">invMass</span> <span class="c1"># Inverse of mass value.</span>
+</pre></div>
+</div>
+<p><strong>rigid_shape_properties</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">friction</span> <span class="c1"># Coefficient of static friction. Value should be equal or greater than zero.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">rolling_friction</span> <span class="c1"># Coefficient of rolling friction.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">torsion_friction</span> <span class="c1"># Coefficient of torsion friction.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">restitution</span> <span class="c1"># Coefficient of restitution. It&#39;s the ratio of the final to initial velocity after the rigid body collides. Range: [0,1]</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">compliance</span> <span class="c1"># Coefficient of compliance. Determines how compliant the shape is. The smaller the value, the stronger the material will hold its shape. Value should be greater or equal to zero.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">thickness</span> <span class="c1"># How far objects should come to rest from the surface of this body</span>
+</pre></div>
+</div>
+<p><strong>dof_properties</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">lower</span> <span class="c1"># lower limit of DOF. In radians or meters</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">upper</span> <span class="c1"># upper limit of DOF. In radians or meters</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">velocity</span> <span class="c1"># Maximum velocity of DOF. In Radians/s, or m/s</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">effort</span> <span class="c1"># Maximum effort of DOF. in N or Nm.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">stiffness</span> <span class="c1"># DOF stiffness.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">damping</span> <span class="c1"># DOF damping.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">friction</span> <span class="c1"># DOF friction coefficient, a generalized friction force is calculated as DOF force multiplied by friction.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">armature</span> <span class="c1"># DOF armature, a value added to the diagonal of the joint-space inertia matrix. Physically, it corresponds to the rotating part of a motor - which increases the inertia of the joint, even when the rigid bodies connected by the joint can have very little inertia.</span>
+</pre></div>
+</div>
+<p><strong>tendon_properties</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">stiffness</span> <span class="c1"># Tendon spring stiffness</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">damping</span> <span class="c1"># Tendon and limit damping. Applies to both tendon and limit spring-damper dynamics.</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">fixed_spring_rest_length</span> <span class="c1"># Fixed tendon spring rest length. When tendon length = springRestLength the tendon spring force is equal to zero</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">fixed_lower_limit</span> <span class="c1"># Fixed tendon length lower limit</span>
+<span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="n">fixed_upper_limit</span> <span class="c1"># Fixed tendon length upper limit</span>
+</pre></div>
+</div>
+<p>To actually apply randomizations during training, you will need to have a copy of the params available in your task class instance, and to call <code class="docutils literal notranslate"><span class="pre">self.apply_randomizations</span></code>. The easiest way to do is to instantiate a dictionary with the parameters in your Task’s <code class="docutils literal notranslate"><span class="pre">__init__</span></code> call:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">randomization_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;task&quot;</span><span class="p">][</span><span class="s2">&quot;randomization_params&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Supporting scheduled randomization also requires adding an additional line of code to your <code class="docutils literal notranslate"><span class="pre">post_physics_step()</span></code> code to update how far along in randomization scheduling each environment is - this is stored in the <code class="docutils literal notranslate"><span class="pre">randomize_buf</span></code> tensor in the base class:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">post_physics_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">randomize_buf</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Finally, add a call to <code class="docutils literal notranslate"><span class="pre">apply_randomizations</span></code> during the reset portion of the training loop. The function takes as arguments a domain randomization dictionary:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_ids</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">apply_randomizations</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">randomization_params</span><span class="p">)</span>
+            <span class="o">...</span>
+</pre></div>
+</div>
+<p>Only environments that are in the reset buffer and which have exceeded the specified <code class="docutils literal notranslate"><span class="pre">frequency</span></code> timesteps since last randomized are will have new randomizations applied.</p>
+</div>
+<div class="section" id="custom-domain-randomizations">
+<h2>Custom domain randomizations<a class="headerlink" href="#custom-domain-randomizations" title="Permalink to this headline">¶</a></h2>
+<p><strong>Custom ramdomizations via a class method</strong>:</p>
+<p>Provided your task inherits from our <code class="docutils literal notranslate"><span class="pre">BaseTask</span></code> class, you have great flexibility in choosing when to randomize and what distributions to sample, and can even change the entire domain randomization dictionary at every call to <code class="docutils literal notranslate"><span class="pre">apply_randomizations</span></code> if you wish. By using your own logic to generate these dictionaries, our current framework can be easily extended to use more intelligent algorithms for domain randomization, such as ADR or BayesSim.</p>
+<p><strong>Custom distributions for randomizing actor properties</strong>:</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">actor_params</span></code> we provide a flexible way to specify arbitrary distributions. This allows to implement custom tasks that inherit from <code class="docutils literal notranslate"><span class="pre">BaseTask</span></code> or other existing tasks, but requires a minimal amount of additional code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CartpoleCustomDR</span><span class="p">(</span><span class="n">Cartpole</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+        <span class="n">Cartpole</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actor_params_generator</span> <span class="o">=</span> <span class="n">ParamsGenerator</span><span class="p">(</span><span class="o">*</span><span class="n">res</span><span class="p">)</span>
+            <span class="o">...</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ParamsGenerator</span></code> class has to implement <code class="docutils literal notranslate"><span class="pre">sample()</span></code> method that returns a flat array of actor properties, which are specified to be randomized by the yaml file. <code class="docutils literal notranslate"><span class="pre">self.actor_params_generator.sample()</span></code> will then be automatically called in <code class="docutils literal notranslate"><span class="pre">self.apply_randomizations()</span></code> and the samples will be used to set actor properties. For convenience, the corresponding names and default values for these can be obtained from <code class="docutils literal notranslate"><span class="pre">self.get_actor_params_info()</span></code>. This functionality is useful for trying full-covariance Gaussians, Gaussian mixtures, custom non-parametric and sampling-based techniques.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../faqs.html" class="btn btn-neutral float-right" title="Frequently Asked Questions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="framework.html" class="btn btn-neutral float-left" title="Sample RL Framework" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2019-2021, NVIDIA Corporation.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
