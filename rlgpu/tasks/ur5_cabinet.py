@@ -58,7 +58,7 @@ class UR5Cabinet(BaseTask):
         self.prop_length = 0.08
         self.prop_spacing = 0.09
 
-        self.num_obs = 262144
+        self.num_obs = 196608
         self.num_acts = 12
 
         self.cfg["env"]["numObservations"] = self.num_obs
@@ -405,7 +405,13 @@ class UR5Cabinet(BaseTask):
             torch_camera_tensor = to_torch(torch_camera_tensor, dtype=torch.float, device=self.device).unsqueeze(0)
             self.img_buf = torch.cat((self.img_buf, torch_camera_tensor), dim=0)
 
-        self.obs_buf = self.img_buf
+        self.img_buf = self.img_buf[:, :, :, :3]
+
+        # add aux obs
+        for i in range(3):
+            dof_pos_scaled.unsqueeze(-2)
+        self.img_buf = self.img_buf.unsqueeze(-1)
+        self.obs_buf = self.img_buf + dof_pos_scaled
         
         return self.obs_buf
 

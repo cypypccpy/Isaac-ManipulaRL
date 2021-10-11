@@ -4,8 +4,8 @@ clip_observations: 255.0
 clip_actions: 1.0
 
 policy: # only works for MlpPolicy right now
-  pi_hid_sizes: [1024, 512, 256, 128, 64]
-  vf_hid_sizes: [1024, 512, 256, 128, 64]
+  pi_hid_sizes: [256, 128, 64]
+  vf_hid_sizes: [256, 128, 64]
   activation: selu # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 learn:
   agent_name: mynewtask_ppo

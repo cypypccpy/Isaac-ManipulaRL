@@ -3,7 +3,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import MultivariateNormal
+from torchvision.models import squeezenet
 from utils.rl_pytorch.ppo.resmlp import ResMLP
+from utils.rl_pytorch.ppo.mynetwork import MyNetWork
+
+from einops import rearrange
+from einops.layers.torch import Rearrange, Reduce
 
 class ActorCritic(nn.Module):
 
@@ -21,47 +26,10 @@ class ActorCritic(nn.Module):
             critic_hidden_dim = model_cfg['vf_hid_sizes']
             activation = get_activation(model_cfg['activation'])
 
-        # Policy
-        # actor_layers = []
-        # actor_layers.append(nn.Linear(*obs_shape, actor_hidden_dim[0]))
-        # actor_layers.append(activation)
-        # for l in range(len(actor_hidden_dim)):
-        #     if l == len(actor_hidden_dim) - 1:
-        #         actor_layers.append(nn.Linear(actor_hidden_dim[l], *actions_shape))
-        #     else:
-        #         actor_layers.append(nn.Linear(actor_hidden_dim[l], actor_hidden_dim[l + 1]))
-        #         actor_layers.append(activation)
-        # self.actor = nn.Sequential(*actor_layers)
+        self.actor = MyNetWork(output=actions_shape[0])
 
-        # # Value function
-        # critic_layers = []
-        # if self.asymmetric:
-        #     critic_layers.append(nn.Linear(*states_shape, critic_hidden_dim[0]))
-        # else:
-        #     critic_layers.append(nn.Linear(*obs_shape, critic_hidden_dim[0]))
-        # critic_layers.append(activation)
-        # for l in range(len(critic_hidden_dim)):
-        #     if l == len(critic_hidden_dim) - 1:
-        #         critic_layers.append(nn.Linear(critic_hidden_dim[l], 1))
-        #     else:
-        #         critic_layers.append(nn.Linear(critic_hidden_dim[l], critic_hidden_dim[l + 1]))
-        #         critic_layers.append(activation)
-        # self.critic = nn.Sequential(*critic_layers)
-        self.actor = ResMLP(image_size = 256,
-                            patch_size = 16,
-                            dim = 512,
-                            channles=4,
-                            depth = 1,
-                            output = actions_shape[0]
-                            )
+        self.critic = MyNetWork(output=1)
 
-        self.critic = ResMLP(image_size = 256,
-                            patch_size = 16,
-                            dim = 512,
-                            channles=4,
-                            depth = 1,
-                            output = 1
-                            )
         print(self.actor)
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
@@ -71,13 +39,20 @@ class ActorCritic(nn.Module):
         actor_weights.append(0.01)
         critic_weights = [np.sqrt(2)] * len(critic_hidden_dim)
         critic_weights.append(1.0)
-        self.init_weights(self.actor, actor_weights)
-        self.init_weights(self.critic, critic_weights)
+        #self.init_weights(self.actor, actor_weights)
+        #self.init_weights(self.critic, critic_weights)
     
     @staticmethod
     def init_weights(sequential, scales):
         [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
          enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
+
+        for mod in sequential:
+            if isinstance(mod, nn.Conv2d):
+                nn.init.kaiming_normal_(mod.weight.data)
+            elif isinstance(mod, nn.BatchNorm2d):
+                mod.weight.data.fill_(1)
+                mod.bias.data.zero_()
 
     def forward(self):
         raise NotImplementedError

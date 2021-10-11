@@ -8,9 +8,9 @@ class RolloutStorage:
 
         self.device = device
         self.sampler = sampler
-        self.image_shape = int(math.sqrt(obs_shape[0] / 4))
+        self.image_shape = int(math.sqrt(obs_shape[0] / 3))
         # Core
-        self.observations = torch.zeros(num_transitions_per_env, num_envs, self.image_shape, self.image_shape, 4, device=self.device)
+        self.observations = torch.zeros(num_transitions_per_env, num_envs, self.image_shape, self.image_shape, 3, 12, device=self.device)
         self.states = torch.zeros(num_transitions_per_env, num_envs, *states_shape, device=self.device)
         self.rewards = torch.zeros(num_transitions_per_env, num_envs, 1, device=self.device)
         self.actions = torch.zeros(num_transitions_per_env, num_envs, *actions_shape, device=self.device)
