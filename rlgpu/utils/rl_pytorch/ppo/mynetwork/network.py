@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+import numpy as np
 from einops.layers.torch import Rearrange, Reduce
 from einops import rearrange
 
@@ -54,70 +55,6 @@ class BasicBlock(nn.Module):
 
         return out
 
-
-class ResFCN(nn.Module):
-
-    def __init__(self, inplane, trunk=True, layers=None, planes=None, zero_init_residual=False):
-        super(ResFCN, self).__init__()
-
-        self.sample = None
-        if trunk:
-            self.sample = pool2x2
-        else:
-            self.sample = upsample2
-
-        if layers is None:
-            layers = [1]*3
-        self.inplanes = inplane
-        self.layer0 = self._make_layer(planes[0], layers[0])
-        self.layer1 = self._make_layer(planes[1], layers[1])
-        self.layer2 = self._make_layer(planes[2], layers[2])
-        self.layer3 = conv1x1(planes[2], planes[3])
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-        # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
-        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        if zero_init_residual:
-            for m in self.modules():
-                nn.init.constant_(m.bn2.weight, 0)
-
-    def _make_layer(self, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes, stride),
-                nn.BatchNorm2d(planes),
-            )
-
-        layers = []
-        layers.append(BasicBlock(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes
-        for _ in range(1, blocks):
-            layers.append(BasicBlock(self.inplanes, planes))
-
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-
-        l0 = self.layer0(x)
-        l0 = self.sample(l0)
-        l1 = self.layer1(l0)
-        l1 = self.sample(l1)
-        l2 = self.layer2(l1)
-        l2 = self.sample(l2)
-        l3 = self.layer3(l2)
-        l3 = self.sample(l3)
-
-        return l3
-
-
 class FeatureTunk(nn.Module):
 
     def __init__(self, pretrained=True):
@@ -127,17 +64,39 @@ class FeatureTunk(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
 
-        self.dense121 = torchvision.models.densenet.densenet121(pretrained=pretrained).features
-        self.dense121.conv0 = nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.dense121 = torchvision.models.densenet.densenet121(pretrained=pretrained).features
+        # self.dense121.conv0 = nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        # self.resnet18 = torchvision.models.resnet.resnet18(pretrained=pretrained)
+        # self.resnet18.fc = nn.Linear(512, 64)
+        self.mobilenetv3_feat = torchvision.models.mobilenet.mobilenet_v3_small(pretrained=pretrained).features
+        # origin: 1
+        self.mobilenetv3_avgpool = nn.AdaptiveAvgPool2d(4)
+        # origin: 576
+        self.mobilenetv3_classifier = nn.Sequential(
+            nn.Linear(48, 256),
+            nn.Hardswish(inplace=True),
+            nn.Dropout(p=0.2, inplace=True),
+            nn.Linear(256, 64),
+        )
 
-    def forward(self, rgb):
-        # Construct minibatch of size 1 (b,c,h,w)
-        return self.dense121(self.rgb_extractor(rgb))
+    def forward(self, x):
+        # x = self.mobilenetv3_feat(self.rgb_extractor(x))
+        x = self.rgb_extractor(x)
+        x = self.mobilenetv3_avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.mobilenetv3_classifier(x)
+        
+        return x
 
 
 class MyNetWork(nn.Module):
@@ -145,26 +104,39 @@ class MyNetWork(nn.Module):
         super(MyNetWork, self).__init__()
 
         self.feature_tunk = FeatureTunk()
-        self.bn = nn.BatchNorm2d(1024)
-        self.gelu = nn.GELU(),
-        self.conv1 = nn.Conv2d(1024, 128, kernel_size=3, stride=1, padding=1, bias=False),
-        self.conv2 = nn.Conv2d(128, 32, kernel_size=3, stride=1, padding=1, bias=False),
-        self.conv3 = nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1, bias=False),
-        self.flatten = nn.Flatten(),
-        self.linear = nn.Linear(1 * 8 * 8, output),
+
+        self.linear1 = nn.Linear(12, 256)
+        self.linear2 = nn.Linear(256, 128)
+        self.linear3 = nn.Linear(128, 64)
+        self.selu = nn.SELU()
+
+        self.linear_output = nn.Linear(128, output)
+
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='selu')
 
     def forward(self, x):
+        rgb_img = x[:, :-12]
+        aux_obs = x[:, -12:]
+
         # 1 * 8 * 8 feat
-        feat_out = self.feature_tunk(img)
-        feat_out = self.bn(feat_out)
-        feat_out = self.gelu(feat_out)
-        feat_out = self.conv1(feat_out)
-        feat_out = self.gelu(feat_out)
-        feat_out = self.conv2(feat_out)
-        feat_out = self.gelu(feat_out)
-        feat_out = self.conv3(feat_out)
-        feat_out = self.flatten(feat_out)
-        feat_out = self.linear(feat_out)
+        rgb_img = rearrange(rgb_img, 'b (h w c) -> b c h w', h = 128, w = 128, c = 3)
+
+        feat_out = self.feature_tunk(rgb_img)
+        aux_obs_out = self.linear1(aux_obs)
+        aux_obs_out = self.selu(aux_obs_out)
+        aux_obs_out = self.linear2(aux_obs_out)
+        aux_obs_out = self.selu(aux_obs_out)
+        aux_obs_out = self.linear3(aux_obs_out)
+        aux_obs_out = self.selu(aux_obs_out)
+
+        output = torch.cat((aux_obs_out, feat_out), dim=1)
+        output = self.linear_output(output)
+
+        return output
+
+
 
 
 

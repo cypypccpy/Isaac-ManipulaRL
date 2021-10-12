@@ -201,6 +201,8 @@ class PPO:
                 self.writer.add_scalar('Episode/' + key, value, locs['it'])
                 ep_string += f"""{f'Mean episode {key}:':>{pad}} {value:.4f}\n"""
         mean_std = self.actor_critic.log_std.exp().mean()
+        log_actions_mean = self.actor_critic.log_actions_mean.mean()
+        log_value = self.actor_critic.log_value.mean()
 
         self.writer.add_scalar('Loss/value_function', locs['mean_value_loss'], locs['it'])
         self.writer.add_scalar('Loss/surrogate', locs['mean_surrogate_loss'], locs['it'])
@@ -213,6 +215,9 @@ class PPO:
 
         self.writer.add_scalar('Train2/mean_reward/step', locs['mean_reward'], locs['it'])
         self.writer.add_scalar('Train2/mean_episode_length/episode', locs['mean_trajectory_length'], locs['it'])
+
+        self.writer.add_scalar('Debug/actions_mean', log_actions_mean.item(), locs['it'])
+        self.writer.add_scalar('Debug/value', log_value.item(), locs['it'])
 
         fps = int(self.num_transitions_per_env * self.vec_env.num_envs / (locs['collection_time'] + locs['learn_time']))
 

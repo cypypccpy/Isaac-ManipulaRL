@@ -17,15 +17,6 @@ class ActorCritic(nn.Module):
 
         self.asymmetric = asymmetric
 
-        if model_cfg is None:
-            actor_hidden_dim = [256, 256, 256]
-            critic_hidden_dim = [256, 256, 256]
-            activation = get_activation("selu")
-        else:
-            actor_hidden_dim = model_cfg['pi_hid_sizes']
-            critic_hidden_dim = model_cfg['vf_hid_sizes']
-            activation = get_activation(model_cfg['activation'])
-
         self.actor = MyNetWork(output=actions_shape[0])
 
         self.critic = MyNetWork(output=1)
@@ -33,26 +24,6 @@ class ActorCritic(nn.Module):
         print(self.actor)
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
-
-        # Initialize the weights like in stable baselines
-        actor_weights = [np.sqrt(2)] * len(actor_hidden_dim)
-        actor_weights.append(0.01)
-        critic_weights = [np.sqrt(2)] * len(critic_hidden_dim)
-        critic_weights.append(1.0)
-        #self.init_weights(self.actor, actor_weights)
-        #self.init_weights(self.critic, critic_weights)
-    
-    @staticmethod
-    def init_weights(sequential, scales):
-        [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
-         enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
-
-        for mod in sequential:
-            if isinstance(mod, nn.Conv2d):
-                nn.init.kaiming_normal_(mod.weight.data)
-            elif isinstance(mod, nn.BatchNorm2d):
-                mod.weight.data.fill_(1)
-                mod.bias.data.zero_()
 
     def forward(self):
         raise NotImplementedError
@@ -70,6 +41,9 @@ class ActorCritic(nn.Module):
             value = self.critic(states)
         else:
             value = self.critic(observations)
+
+        self.log_actions_mean = actions_mean
+        self.log_value = value
 
         return actions.detach(), actions_log_prob.detach(), value.detach(), actions_mean.detach(), self.log_std.repeat(actions_mean.shape[0], 1).detach()
 
