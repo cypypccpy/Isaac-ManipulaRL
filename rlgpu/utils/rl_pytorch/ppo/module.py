@@ -21,7 +21,6 @@ class ActorCritic(nn.Module):
 
         self.critic = MyNetWork(output=1)
 
-        print(self.actor)
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
 

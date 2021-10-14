@@ -253,6 +253,8 @@ for i in range(num_envs):
     attractor_handles[i] = []
     baxter_body_dict = gym.get_actor_rigid_body_dict(env, baxter_handle)
     baxter_props = gym.get_actor_rigid_body_states(env, baxter_handle, gymapi.STATE_POS)
+    print(baxter_body_dict)
+    print(baxter_props)
 
     #my attractors
     for j, body in enumerate(baxter_attractors):

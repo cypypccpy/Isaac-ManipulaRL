@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 from tasks.ur5_cabinet import UR5Cabinet
+from tasks.baxter_cabinet import BaxterCabinet
 from tasks.base.vec_task import VecTaskCPU, VecTaskGPU, VecTaskPython
 
 from utils.config import warn_task_name

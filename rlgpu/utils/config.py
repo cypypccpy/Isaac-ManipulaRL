@@ -65,8 +65,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "cartpole_y_up"), "cfg/train/rlg/rlg_cartpole.yaml", "cfg/cartpole.yaml"
         elif args.task == "Ant":
             return os.path.join(args.logdir, "ant"), "cfg/train/rlg/rlg_ant.yaml", "cfg/ant.yaml"
-        elif args.task == "Humanoid":
-            return os.path.join(args.logdir, "humanoid"), "cfg/train/rlg/rlg_humanoid.yaml", "cfg/humanoid.yaml"
+        elif args.task == "BaxterCabinet":
+            return os.path.join(args.logdir, "baxter_cabinet"), "cfg/train/rlg/rlg_baxter_cabinet.yaml", "cfg/baxter_cabinet.yaml"
         elif args.task == "FrankaCabinet":
             return os.path.join(args.logdir, "franka_cabinet"), "cfg/train/rlg/rlg_franka_cabinet.yaml", "cfg/franka_cabinet.yaml"
         elif args.task == "UR5Cabinet":
@@ -109,8 +109,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "cartpole_y_up"), "cfg/train/rlpt/pytorch_ppo_cartpole.yaml", "cfg/cartpole.yaml"
         elif args.task == "Ant":
             return os.path.join(args.logdir, "ant"), "cfg/train/rlpt/pytorch_ppo_ant.yaml", "cfg/ant.yaml"
-        elif args.task == "Humanoid":
-            return os.path.join(args.logdir, "humanoid"), "cfg/train/rlpt/pytorch_ppo_humanoid.yaml", "cfg/humanoid.yaml"
+        elif args.task == "BaxterCabinet":
+            return os.path.join(args.logdir, "baxter_cabinet"), "cfg/train/rlpt/pytorch_ppo_baxter_cabinet.yaml", "cfg/baxter_cabinet.yaml"
         elif args.task == "FrankaCabinet":
             return os.path.join(args.logdir, "franka_cabinet"), "cfg/train/rlpt/pytorch_ppo_franka_cabinet.yaml", "cfg/franka_cabinet.yaml"
         elif args.task == "UR5Cabinet":

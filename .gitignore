@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 #pytorch
-rlgpu/logs/*/*.pt
+rlgpu/logs/

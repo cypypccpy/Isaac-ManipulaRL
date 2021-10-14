@@ -5,8 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-#from rl_pytorch.ppo import PPO, ActorCritic
-from utils.rl_pytorch.ppo import PPO, ActorCritic
+from rl_pytorch.ppo import PPO, ActorCritic
+#from utils.rl_pytorch.ppo import PPO, ActorCritic
 
 def process_ppo(args, env, cfg_train, logdir):
     learn_cfg = cfg_train["learn"]
