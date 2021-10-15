@@ -25,7 +25,7 @@ learn:
   nminibatches: 4 # this is per agent
   max_grad_norm: 1
   optim_stepsize: 3.e-4 # 3e-4 is default for single agent training with constant schedule
-  schedule: adaptive # could be adaptive or linear or fixed
+  schedule: fixed # could be adaptive or linear or fixed
   gamma: 0.9
   lam: 0.95
   init_noise_std: 1.0

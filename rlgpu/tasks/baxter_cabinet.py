@@ -51,7 +51,7 @@ class BaxterCabinet(BaseTask):
         self.up_axis = "z"
         self.up_axis_idx = 2
 
-        self.distX_offset = 0.4
+        self.distX_offset = 4
         self.dt = 1/60.
 
         # prop dimensions
@@ -152,6 +152,10 @@ class BaxterCabinet(BaseTask):
         asset_options.thickness = 0.001
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
         asset_options.use_mesh_materials = True
+        # asset_options.vhacd_enabled = True
+        # asset_options.vhacd_params.resolution = 300000
+        # asset_options.vhacd_params.max_convex_hulls = 10
+        # asset_options.vhacd_params.max_num_vertices_per_ch = 64
         baxter_asset = self.gym.load_asset(self.sim, asset_root, baxter_asset_file, asset_options)
 
         # load cabinet asset
@@ -184,11 +188,11 @@ class BaxterCabinet(BaseTask):
         for i in range(self.num_baxter_dofs):
             baxter_dof_props['driveMode'][i] = gymapi.DOF_MODE_POS
             if self.physics_engine == gymapi.SIM_PHYSX:
-                baxter_dof_props['stiffness'][i] = baxter_dof_stiffness[i]
-                baxter_dof_props['damping'][i] = baxter_dof_damping[i]
+                baxter_dof_props['stiffness'][i] = baxter_dof_props['stiffness'][i]
+                baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
             else:
                 baxter_dof_props['stiffness'][i] = 7000.0
-                baxter_dof_props['damping'][i] = 50.0
+                baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
 
             self.baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
             self.baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
@@ -213,11 +217,11 @@ class BaxterCabinet(BaseTask):
         prop_asset = self.gym.create_box(self.sim, self.prop_width, self.prop_height, self.prop_width, box_opts)
 
         baxter_start_pose = gymapi.Transform()
-        baxter_start_pose.p = gymapi.Vec3(1.0, 0.0, 1.0)
+        baxter_start_pose.p = gymapi.Vec3(1.3, 0.0, 1.0)
         baxter_start_pose.r = gymapi.Quat(0.0, 0.0, 1.0, 0.0)
 
         cabinet_start_pose = gymapi.Transform()
-        cabinet_start_pose.p = gymapi.Vec3(*get_axis_params(1.4, self.up_axis_idx))
+        cabinet_start_pose.p = gymapi.Vec3(*get_axis_params(1.1, self.up_axis_idx))
 
         # compute aggregate size
         num_baxter_bodies = self.gym.get_asset_rigid_body_count(baxter_asset)
@@ -243,7 +247,7 @@ class BaxterCabinet(BaseTask):
             )
             camera_handle = self.gym.create_camera_sensor(env_ptr, self.camera_props)
             transform = gymapi.Transform()
-            transform.p = gymapi.Vec3(1.25, 0, 1.25)
+            transform.p = gymapi.Vec3(1.25, 0, 1.2)
             transform.r = gymapi.Quat.from_euler_zyx(math.pi, 0.75 * math.pi, 0)
             self.gym.set_camera_transform(camera_handle, env_ptr, transform)
 
@@ -305,7 +309,7 @@ class BaxterCabinet(BaseTask):
             self.cabinets.append(cabinet_actor)
             self.camera_handles.append(camera_handle)
 
-        self.hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_gripper_base")
+        self.hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
         self.drawer_handle = self.gym.find_actor_rigid_body_handle(env_ptr, cabinet_actor, "drawer_top")
         self.lfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_l_finger")
         self.rfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_r_finger")
@@ -314,7 +318,7 @@ class BaxterCabinet(BaseTask):
         self.init_data()
 
     def init_data(self):
-        hand = self.gym.find_actor_rigid_body_handle(self.envs[0], self.baxters[0], "right_gripper_base")
+        hand = self.gym.find_actor_rigid_body_handle(self.envs[0], self.baxters[0], "right_wrist")
         lfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.baxters[0], "r_gripper_l_finger")
         rfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.baxters[0], "r_gripper_r_finger")
 
@@ -329,6 +333,7 @@ class BaxterCabinet(BaseTask):
         hand_pose_inv = hand_pose.inverse()
         grasp_pose_axis = 1
         baxter_local_grasp_pose = hand_pose_inv * finger_pose
+        # baxter_local_grasp_pose = hand_pose
         baxter_local_grasp_pose.p += gymapi.Vec3(*get_axis_params(0.04, grasp_pose_axis))
         self.baxter_local_grasp_pos = to_torch([baxter_local_grasp_pose.p.x, baxter_local_grasp_pose.p.y,
                                                 baxter_local_grasp_pose.p.z], device=self.device).repeat((self.num_envs, 1))
@@ -586,13 +591,13 @@ def compute_baxter_reward(
         + around_handle_reward_scale * around_handle_reward + open_reward_scale * open_reward \
         + finger_dist_reward_scale * finger_dist_reward - action_penalty_scale * action_penalty
 
-    rewards = torch.where(open_reward > 0.38, rewards + 1.0,
-                          torch.where(open_reward > 0.2, rewards + 0.8,
-                                      torch.where(open_reward > 0.15, rewards + 0.65,
-                                                  torch.where(open_reward > 0.1, rewards + 0.5,
-                                                              torch.where(open_reward > 0.05, rewards + 0.35,
-                                                                          torch.where(open_reward > 0.01, rewards + 0.25,
-                                                                                      torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
+    rewards = torch.where(open_reward > 0.38, rewards + 10.0,
+                          torch.where(open_reward > 0.2, rewards + 8,
+                                      torch.where(open_reward > 0.15, rewards + 6.5,
+                                                  torch.where(open_reward > 0.1, rewards + 5,
+                                                              torch.where(open_reward > 0.05, rewards + 3.5,
+                                                                          torch.where(open_reward > 0.01, rewards + 2.,
+                                                                                      torch.where(open_reward > 0.0, rewards + 1.5, rewards)))))))
 
     rewards = torch.where(baxter_lfinger_pos[:, 0] < drawer_grasp_pos[:, 0] - distX_offset,
                           torch.ones_like(rewards) * -1, rewards)
