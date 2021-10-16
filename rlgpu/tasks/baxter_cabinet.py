@@ -191,7 +191,7 @@ class BaxterCabinet(BaseTask):
                 baxter_dof_props['stiffness'][i] = baxter_dof_props['stiffness'][i]
                 baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
             else:
-                baxter_dof_props['stiffness'][i] = 7000.0
+                baxter_dof_props['stiffness'][i] = baxter_dof_props['stiffness'][i]
                 baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
 
             self.baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
@@ -203,8 +203,8 @@ class BaxterCabinet(BaseTask):
         self.baxter_dof_upper_limits = to_torch(self.baxter_dof_upper_limits, device=self.device)
         self.baxter_dof_speed_scales = torch.ones_like(self.baxter_dof_lower_limits)
         self.baxter_dof_speed_scales[[17, 18]] = 0.1
-        baxter_dof_props['effort'][17] = 200
-        baxter_dof_props['effort'][18] = 200
+        # baxter_dof_props['effort'][17] = 200
+        # baxter_dof_props['effort'][18] = 200
 
         # set cabinet dof properties
         cabinet_dof_props = self.gym.get_asset_dof_properties(cabinet_asset)
@@ -591,13 +591,13 @@ def compute_baxter_reward(
         + around_handle_reward_scale * around_handle_reward + open_reward_scale * open_reward \
         + finger_dist_reward_scale * finger_dist_reward - action_penalty_scale * action_penalty
 
-    rewards = torch.where(open_reward > 0.38, rewards + 10.0,
-                          torch.where(open_reward > 0.2, rewards + 8,
-                                      torch.where(open_reward > 0.15, rewards + 6.5,
-                                                  torch.where(open_reward > 0.1, rewards + 5,
-                                                              torch.where(open_reward > 0.05, rewards + 3.5,
-                                                                          torch.where(open_reward > 0.01, rewards + 2.,
-                                                                                      torch.where(open_reward > 0.0, rewards + 1.5, rewards)))))))
+    rewards = torch.where(open_reward > 0.38, rewards + 100,
+                          torch.where(open_reward > 0.2, rewards + 80,
+                                      torch.where(open_reward > 0.15, rewards + 65,
+                                                  torch.where(open_reward > 0.1, rewards + 50,
+                                                              torch.where(open_reward > 0.05, rewards + 0.35,
+                                                                          torch.where(open_reward > 0.01, rewards + 0.2,
+                                                                                      torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
 
     rewards = torch.where(baxter_lfinger_pos[:, 0] < drawer_grasp_pos[:, 0] - distX_offset,
                           torch.ones_like(rewards) * -1, rewards)
@@ -607,6 +607,8 @@ def compute_baxter_reward(
     reset_buf = torch.where(baxter_lfinger_pos[:, 0] < drawer_grasp_pos[:, 0] - distX_offset,
                             torch.ones_like(reset_buf), reset_buf)
     reset_buf = torch.where(baxter_rfinger_pos[:, 0] < drawer_grasp_pos[:, 0] - distX_offset,
+                            torch.ones_like(reset_buf), reset_buf)
+    reset_buf = torch.where(open_reward > 0.1,
                             torch.ones_like(reset_buf), reset_buf)
     reset_buf = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset_buf)
     return rewards, reset_buf
