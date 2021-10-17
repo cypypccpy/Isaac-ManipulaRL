@@ -380,18 +380,19 @@ class BaxterCabinet(BaseTask):
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
-        hand_pos = self.rigid_body_states[:, self.hand_handle][:, 0:3]
-        hand_rot = self.rigid_body_states[:, self.hand_handle][:, 3:7]
+        self.hand_pos = self.rigid_body_states[:, self.hand_handle][:, 0:3]
+        self.hand_rot = self.rigid_body_states[:, self.hand_handle][:, 3:7]
         drawer_pos = self.rigid_body_states[:, self.drawer_handle][:, 0:3]
         drawer_rot = self.rigid_body_states[:, self.drawer_handle][:, 3:7]
 
         self.baxter_grasp_rot[:], self.baxter_grasp_pos[:], self.drawer_grasp_rot[:], self.drawer_grasp_pos[:] = \
-            compute_grasp_transforms(hand_rot, hand_pos, self.baxter_local_grasp_rot, self.baxter_local_grasp_pos,
+            compute_grasp_transforms(self.hand_rot, self.hand_pos, self.baxter_local_grasp_rot, self.baxter_local_grasp_pos,
                                      drawer_rot, drawer_pos, self.drawer_local_grasp_rot, self.drawer_local_grasp_pos
                                      )
 
-        self.baxter_lfinger_pos = self.rigid_body_states[:, self.lfinger_handle][:, 0:3]
-        self.baxter_rfinger_pos = self.rigid_body_states[:, self.rfinger_handle][:, 0:3]
+        # self.baxter_lfinger_pos = self.rigid_body_states[:, self.lfinger_handle][:, 0:3] + to_torch([0.0, -0.01725, 0.1127], device=self.device)
+        self.baxter_lfinger_pos = self.rigid_body_states[:, self.lfinger_handle][:, 0:3] + (self.rigid_body_states[:, self.lfinger_handle][:, 0:3] - self.hand_pos) * 0.55
+        self.baxter_rfinger_pos = self.rigid_body_states[:, self.rfinger_handle][:, 0:3] + (self.rigid_body_states[:, self.rfinger_handle][:, 0:3] - self.hand_pos) * 0.55
         self.baxter_lfinger_rot = self.rigid_body_states[:, self.lfinger_handle][:, 3:7]
         self.baxter_rfinger_rot = self.rigid_body_states[:, self.rfinger_handle][:, 3:7]
 
@@ -490,14 +491,14 @@ class BaxterCabinet(BaseTask):
             self.gym.refresh_rigid_body_state_tensor(self.sim)
 
             for i in range(self.num_envs):
-                px = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([1, 0, 0], device=self.device) * 0.2)).cpu().numpy()
-                py = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([0, 1, 0], device=self.device) * 0.2)).cpu().numpy()
-                pz = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([0, 0, 1], device=self.device) * 0.2)).cpu().numpy()
+                # px = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([1, 0, 0], device=self.device) * 0.2)).cpu().numpy()
+                # py = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([0, 1, 0], device=self.device) * 0.2)).cpu().numpy()
+                # pz = (self.baxter_grasp_pos[i] + quat_apply(self.baxter_grasp_rot[i], to_torch([0, 0, 1], device=self.device) * 0.2)).cpu().numpy()
 
-                p0 = self.baxter_grasp_pos[i].cpu().numpy()
-                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], px[0], px[1], px[2]], [0.85, 0.1, 0.1])
-                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], py[0], py[1], py[2]], [0.1, 0.85, 0.1])
-                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], pz[0], pz[1], pz[2]], [0.1, 0.1, 0.85])
+                # p0 = self.baxter_grasp_pos[i].cpu().numpy()
+                # self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], px[0], px[1], px[2]], [0.85, 0.1, 0.1])
+                # self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], py[0], py[1], py[2]], [0.1, 0.85, 0.1])
+                # self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], pz[0], pz[1], pz[2]], [0.1, 0.1, 0.85])
 
                 px = (self.drawer_grasp_pos[i] + quat_apply(self.drawer_grasp_rot[i], to_torch([1, 0, 0], device=self.device) * 0.2)).cpu().numpy()
                 py = (self.drawer_grasp_pos[i] + quat_apply(self.drawer_grasp_rot[i], to_torch([0, 1, 0], device=self.device) * 0.2)).cpu().numpy()
@@ -526,6 +527,14 @@ class BaxterCabinet(BaseTask):
                 self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], py[0], py[1], py[2]], [0, 1, 0])
                 self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], pz[0], pz[1], pz[2]], [0, 0, 1])
 
+                px = (self.hand_pos[i] + quat_apply(self.hand_rot[i], to_torch([1, 0, 0], device=self.device) * 0.2)).cpu().numpy()
+                py = (self.hand_pos[i] + quat_apply(self.hand_rot[i], to_torch([0, 1, 0], device=self.device) * 0.2)).cpu().numpy()
+                pz = (self.hand_pos[i] + quat_apply(self.hand_rot[i], to_torch([0, 0, 1], device=self.device) * 0.2)).cpu().numpy()
+
+                p0 = self.hand_pos[i].cpu().numpy()
+                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], px[0], px[1], px[2]], [1, 0, 0])
+                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], py[0], py[1], py[2]], [0, 1, 0])
+                self.gym.add_lines(self.viewer, self.envs[i], 1, [p0[0], p0[1], p0[2], pz[0], pz[1], pz[2]], [0, 0, 1])
         # Camera Debug
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
         # torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)

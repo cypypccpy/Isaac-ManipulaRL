@@ -11,7 +11,7 @@
             "program": "/home/lohse/Isaac-drlgrasp/rlgpu/train.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/rlgpu",
-            "args": ["--task", "BaxterCabinet"],
+            "args": ["--task", "BaxterCabinet", "--test"],
             "justMyCode": false
         }
     ]
