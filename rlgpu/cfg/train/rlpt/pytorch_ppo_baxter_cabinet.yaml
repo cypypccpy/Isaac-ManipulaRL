@@ -1,11 +1,11 @@
 seed: -1
 
-clip_observations: 255.0
+clip_observations: 5.0
 clip_actions: 1.0
 
 policy: # only works for MlpPolicy right now
-  pi_hid_sizes: [256, 128, 64]
-  vf_hid_sizes: [256, 128, 64]
+  pi_hid_sizes: [256, 128, 64, 32]
+  vf_hid_sizes: [256, 128, 64, 32]
   activation: selu # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 learn:
   agent_name: mynewtask_ppo
@@ -26,7 +26,7 @@ learn:
   max_grad_norm: 1
   optim_stepsize: 3.e-4 # 3e-4 is default for single agent training with constant schedule
   schedule: fixed # could be adaptive or linear or fixed
-  gamma: 0.9
+  gamma: 0.998
   lam: 0.95
   init_noise_std: 1.0
 
