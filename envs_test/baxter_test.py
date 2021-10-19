@@ -21,6 +21,7 @@ import numpy as np
 from isaacgym import gymapi
 from isaacgym import gymutil
 from isaacgym import gymtorch
+from rlgpu.utils.torch_jit_utils import *
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -79,7 +80,10 @@ elif sim_type == gymapi.SIM_PHYSX:
     sim_params.physx.num_threads = args.num_threads
     sim_params.physx.use_gpu = args.use_gpu
     sim_params.physx.rest_offset = 0.001
-    sim_params.up_axis = gymapi.UP_AXIS_Y
+    sim_params.up_axis = gymapi.UP_AXIS_Z
+    sim_params.gravity.x = 0
+    sim_params.gravity.y = 0
+    sim_params.gravity.z = -9.81
     #sim_params.gravity = gymapi.Vec3(0.0, -9.81, 0.0)
 
 sim_params.use_gpu_pipeline = False
@@ -133,211 +137,180 @@ table_asset = gym.create_box(sim, table_dims.x, table_dims.y, table_dims.z, asse
 # load assets of objects in a bin
 asset_options.fix_base_link = False
 
-can_asset_file = "urdf/ycb/010_potted_meat_can/010_potted_meat_can.urdf"
-banana_asset_file = "urdf/ycb/011_banana/011_banana.urdf"
-mug_asset_file = "urdf/ycb/025_mug/025_mug.urdf"
-brick_asset_file = "urdf/ycb/061_foam_brick/061_foam_brick.urdf"
-
-object_files = []
-object_files.append(can_asset_file)
-object_files.append(banana_asset_file)
-object_files.append(mug_asset_file)
-object_files.append(object_files)
-
-object_assets = []
-
-object_assets.append(gym.create_box(sim, box_size, box_size, box_size, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, can_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, banana_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, mug_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, brick_asset_file, asset_options))
-
-spawn_height = gymapi.Vec3(0.0, 0.3, 0.0)
-
-# load bin asset
-bin_asset_file = "urdf/tray/traybox.urdf"
-
-print("Loading asset '%s' from '%s'" % (bin_asset_file, asset_root))
-bin_asset = gym.load_asset(sim, asset_root, bin_asset_file, asset_options)
-
-corner = table_pose.p - table_dims * 0.5
+lower = gymapi.Vec3(-1.5, -1.5, 0.0)
+upper = gymapi.Vec3(1.5, 1.5, 1.5)
 
 asset_root = "../assets"
 baxter_asset_file = "baxter/baxter_isaac.urdf"
+cabinet_asset_file = "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
 
-asset_options.fix_base_link = True
+# load baxter asset
+asset_options = gymapi.AssetOptions()
 asset_options.flip_visual_attachments = True
+asset_options.fix_base_link = True
 asset_options.collapse_fixed_joints = True
+asset_options.disable_gravity = True
+asset_options.thickness = 0.001
+asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
 asset_options.use_mesh_materials = True
-
-if sim_type == gymapi.SIM_FLEX:
-    asset_options.max_angular_velocity = 40.
-
-print("Loading asset '%s' from '%s'" % (baxter_asset_file, asset_root))
+# asset_options.vhacd_enabled = True
+# asset_options.vhacd_params.resolution = 300000
+# asset_options.vhacd_params.max_convex_hulls = 10
+# asset_options.vhacd_params.max_num_vertices_per_ch = 64
 baxter_asset = gym.load_asset(sim, asset_root, baxter_asset_file, asset_options)
 
-# set up the env grid
-spacing = 1.5
-env_lower = gymapi.Vec3(-spacing, 0.0, -spacing)
-env_upper = gymapi.Vec3(spacing, spacing, spacing)
+# load cabinet asset
+asset_options.flip_visual_attachments = False
+asset_options.collapse_fixed_joints = True
+asset_options.disable_gravity = False
+asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
+asset_options.armature = 0.005
+cabinet_asset = gym.load_asset(sim, asset_root, cabinet_asset_file, asset_options)
 
-# cache some common handles for later use
-envs = []
-tray_handles = []
-object_handles = []
+baxter_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 400, 400, 400, 400, 400, 400, 400], dtype=torch.float, device='cuda:0')
+baxter_dof_damping = to_torch([80, 80, 80, 80, 80, 80, 80, 1.0e2, 1.0e2, 1.0e2, 1.0e2, 1.0e2, 80, 80, 80, 80, 80, 80, 80], dtype=torch.float, device='cuda:0')
+baxter_dof_lower_limit = to_torch([-3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14], dtype=torch.float, device='cuda:0')
+baxter_dof_upper_limit = to_torch([3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14], dtype=torch.float, device='cuda:0')
 
-# Attractors setup
-baxter_attractors = ["r_gripper_l_finger"]
-# attractors_offsets = [gymapi.Transform(), gymapi.Transform(), gymapi.Transform(), gymapi.Transform(), gymapi.Transform()]
+num_baxter_bodies = gym.get_asset_rigid_body_count(baxter_asset)
+num_baxter_dofs = gym.get_asset_dof_count(baxter_asset)
+num_cabinet_bodies = gym.get_asset_rigid_body_count(cabinet_asset)
+num_cabinet_dofs = gym.get_asset_dof_count(cabinet_asset)
 
-# # Coordinates to offset attractors to tips of fingers
-# # thumb
-# attractors_offsets[1].p = gymapi.Vec3(0.07, 0.01, 0)
-# attractors_offsets[1].r = gymapi.Quat(0.0, 0.0, 0.216433, 0.976297)
-# # index, middle and ring
-# for i in range(2, 5):
-#     attractors_offsets[i].p = gymapi.Vec3(0.055, 0.015, 0)
-#     attractors_offsets[i].r = gymapi.Quat(0.0, 0.0, 0.216433, 0.976297)
+print("num baxter bodies: ", num_baxter_bodies)
+print("num baxter dofs: ", num_baxter_dofs)
+print("num cabinet bodies: ", num_cabinet_bodies)
+print("num cabinet dofs: ", num_cabinet_dofs)
 
-attractor_handles = {}
+# set baxter dof properties
+baxter_dof_props = gym.get_asset_dof_properties(baxter_asset)
+baxter_dof_lower_limits = []
+baxter_dof_upper_limits = []
+for i in range(num_baxter_dofs):
+    baxter_dof_props['driveMode'][i] = gymapi.DOF_MODE_POS
+    if sim_type == gymapi.SIM_PHYSX:
+        baxter_dof_props['stiffness'][i] = baxter_dof_props['stiffness'][i]
+        baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
+    else:
+        baxter_dof_props['stiffness'][i] = baxter_dof_props['stiffness'][i]
+        baxter_dof_props['damping'][i] = baxter_dof_props['damping'][i]
+
+    baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
+    baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
+    # baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
+    # baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
+
+baxter_dof_lower_limits = to_torch(baxter_dof_lower_limits, device='cuda:0')
+baxter_dof_upper_limits = to_torch(baxter_dof_upper_limits, device='cuda:0')
+baxter_dof_speed_scales = torch.ones_like(baxter_dof_lower_limits)
+baxter_dof_speed_scales[[17, 18]] = 0.1
+# baxter_dof_props['effort'][17] = 200
+# baxter_dof_props['effort'][18] = 200
+
+# set cabinet dof properties
+cabinet_dof_props = gym.get_asset_dof_properties(cabinet_asset)
+for i in range(num_cabinet_dofs):
+    cabinet_dof_props['damping'][i] = 10.0
+
+# create prop assets
+box_opts = gymapi.AssetOptions()
+box_opts.density = 400
+prop_asset = gym.create_box(sim, 0.08, 0.08, 0.08, box_opts)
+
+baxter_start_pose = gymapi.Transform()
+baxter_start_pose.p = gymapi.Vec3(1.4, 0.0, 1.0)
+baxter_start_pose.r = gymapi.Quat(0.0, 0.0, 1.0, 0.0)
+
+cabinet_start_pose = gymapi.Transform()
+cabinet_start_pose.p = gymapi.Vec3(*get_axis_params(1.1, 2))
 
 print("Creating %d environments" % num_envs)
-num_per_row = int(math.sqrt(num_envs))
-base_poses = []
+baxters = []
+cabinets = []
+default_prop_states = []
+prop_start = []
+envs = []
 
 for i in range(num_envs):
-    # create env
-    env = gym.create_env(sim, env_lower, env_upper, num_per_row)
-    envs.append(env)
+    env_ptr = gym.create_env(sim, lower, upper, int(np.sqrt(num_envs)))
 
-    table_handle = gym.create_actor(env, table_asset, table_pose, "table", i, 0)
-    # base_handle = gym.create_actor(env, table_asset, base_pose, "base", i, 0)
+    baxter_actor = gym.create_actor(env_ptr, baxter_asset, baxter_start_pose, "baxter", i, 1, 0)
+    gym.set_actor_dof_properties(env_ptr, baxter_actor, baxter_dof_props)
 
-    x = corner.x + table_dims.x * 0.5
-    y = table_dims.y + box_size + 0.01
-    z = corner.z + table_dims.z * 0.5
+    cabinet_pose = cabinet_start_pose
+    dz = 0.5 * np.random.rand()
+    dy = np.random.rand() - 0.5
+    cabinet_actor = gym.create_actor(env_ptr, cabinet_asset, cabinet_pose, "cabinet", i, 2, 0)
+    gym.set_actor_dof_properties(env_ptr, cabinet_actor, cabinet_dof_props)
 
-    bin_pose.p = gymapi.Vec3(x, y, z)
-    tray_handles.append(gym.create_actor(env, bin_asset, bin_pose, "bin", i, 0))
+    envs.append(env_ptr)
+    baxters.append(baxter_actor)
+    cabinets.append(cabinet_actor)
+    
+hand_handle = gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
+drawer_handle = gym.find_actor_rigid_body_handle(env_ptr, cabinet_actor, "drawer_top")
+lfinger_handle = gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_l_finger")
+rfinger_handle = gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_r_finger")
 
-    gym.set_rigid_body_color(env, tray_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, tray_color)
+hand = gym.find_actor_rigid_body_handle(envs[0], baxters[0], "right_wrist")
+lfinger = gym.find_actor_rigid_body_handle(envs[0], baxters[0], "r_gripper_l_finger")
+rfinger = gym.find_actor_rigid_body_handle(envs[0], baxters[0], "r_gripper_r_finger")
 
-    for j in range(num_objects):
-        x = corner.x + table_dims.x * 0.5 + np.random.rand() * 0.35 - 0.2
-        y = table_dims.y + box_size * 1.2 * j - 0.05
-        z = corner.z + table_dims.z * 0.5 + np.random.rand() * 0.3 - 0.15
+hand_pose = gym.get_rigid_transform(envs[0], hand)
+lfinger_pose = gym.get_rigid_transform(envs[0], lfinger)
+rfinger_pose = gym.get_rigid_transform(envs[0], rfinger)
 
-        object_pose.p = gymapi.Vec3(x, y, z) + spawn_height
+finger_pose = gymapi.Transform()
+finger_pose.p = (lfinger_pose.p + rfinger_pose.p) * 0.5
+finger_pose.r = lfinger_pose.r
 
-        object_asset = object_assets[0]
-        if args.object_type >= 5:
-            object_asset = object_assets[np.random.randint(len(object_assets))]
-        else:
-            object_asset = object_assets[args.object_type]
+hand_pose_inv = hand_pose.inverse()
+grasp_pose_axis = 1
+baxter_local_grasp_pose = hand_pose_inv * finger_pose
+# baxter_local_grasp_pose = hand_pose
+baxter_local_grasp_pose.p += gymapi.Vec3(*get_axis_params(0.04, grasp_pose_axis))
+baxter_local_grasp_pos = to_torch([baxter_local_grasp_pose.p.x, baxter_local_grasp_pose.p.y,
+                                        baxter_local_grasp_pose.p.z], device='cuda:0').repeat((num_envs, 1))
+baxter_local_grasp_rot = to_torch([baxter_local_grasp_pose.r.x, baxter_local_grasp_pose.r.y,
+                                        baxter_local_grasp_pose.r.z, baxter_local_grasp_pose.r.w], device=device).repeat((num_envs, 1))
 
-        object_handles.append(gym.create_actor(env, object_asset, object_pose, "object" + str(j), i, 0))
+drawer_local_grasp_pose = gymapi.Transform()
+drawer_local_grasp_pose.p = gymapi.Vec3(*get_axis_params(0.01, grasp_pose_axis, 0.3))
+drawer_local_grasp_pose.r = gymapi.Quat(0, 0, 0, 1)
+drawer_local_grasp_pos = to_torch([drawer_local_grasp_pose.p.x, drawer_local_grasp_pose.p.y,
+                                        drawer_local_grasp_pose.p.z], device='cuda:0').repeat((num_envs, 1))
+drawer_local_grasp_rot = to_torch([drawer_local_grasp_pose.r.x, drawer_local_grasp_pose.r.y,
+                                        drawer_local_grasp_pose.r.z, drawer_local_grasp_pose.r.w], device=device).repeat((num_envs, 1))
 
-        if args.object_type == 2:
-            color = gymapi.Vec3(banana_color.x + np.random.rand()*0.1, banana_color.y + np.random.rand()*0.05, banana_color.z)
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
-        elif args.object_type == 4:
-            color = gymapi.Vec3(brick_color.x + np.random.rand()*0.1, brick_color.y + np.random.rand()*0.04, brick_color.z + np.random.rand()*0.05)
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
-        else:
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, colors[j % len(colors)])
+gripper_forward_axis = to_torch([0, 0, 1], device='cuda:0').repeat((num_envs, 1))
+drawer_inward_axis = to_torch([-1, 0, 0], device='cuda:0').repeat((num_envs, 1))
+gripper_up_axis = to_torch([0, 1, 0], device='cuda:0').repeat((num_envs, 1))
+drawer_up_axis = to_torch([0, 0, 1], device='cuda:0').repeat((num_envs, 1))
 
-    # add baxter
-    baxter_handle = gym.create_actor(env, baxter_asset, baxter_pose, "baxter", i, 1)
-    baxter_handles = []
+baxter_grasp_pos = torch.zeros_like(baxter_local_grasp_pos)
+baxter_grasp_rot = torch.zeros_like(baxter_local_grasp_rot)
+baxter_grasp_rot[..., -1] = 1  # xyzw
+drawer_grasp_pos = torch.zeros_like(drawer_local_grasp_pos)
+drawer_grasp_rot = torch.zeros_like(drawer_local_grasp_rot)
+drawer_grasp_rot[..., -1] = 1
+baxter_lfinger_pos = torch.zeros_like(baxter_local_grasp_pos)
+baxter_rfinger_pos = torch.zeros_like(baxter_local_grasp_pos)
+baxter_lfinger_rot = torch.zeros_like(baxter_local_grasp_rot)
+baxter_rfinger_rot = torch.zeros_like(baxter_local_grasp_rot)
 
-    attractor_handles[i] = []
-    baxter_body_dict = gym.get_actor_rigid_body_dict(env, baxter_handle)
-    baxter_props = gym.get_actor_rigid_body_states(env, baxter_handle, gymapi.STATE_POS)
-    print(baxter_body_dict)
-    print(baxter_props)
-
-    #my attractors
-    for j, body in enumerate(baxter_attractors):
-        attractor_properties = gymapi.AttractorProperties()
-        attractor_properties.stiffness = 1e6
-        attractor_properties.damping = 5e2
-        body_handle = gym.find_actor_rigid_body_handle(env, baxter_handle, body)
-        attractor_properties.target = baxter_props['pose'][:][baxter_body_dict[body]]
-        attractor_properties.target.p.y -= 0.15
-
-        # By Default, offset pose is set to origin, so no need to set it
-        # if j > 0:
-        #     attractor_properties.offset = attractors_offsets[j]
-        base_poses.append(attractor_properties.target)
-        if j == 0:
-            # make attractor in all axes
-            attractor_properties.axes = gymapi.AXIS_ALL
-        else:
-            # make attractor in Translation only
-            attractor_properties.axes = gymapi.AXIS_TRANSLATION
-
-        # attractor_properties.target.p.z=0.1
-        attractor_properties.rigid_handle = body_handle
-
-        gymutil.draw_lines(axes_geom, gym, viewer, env, attractor_properties.target)
-        gymutil.draw_lines(sphere_geom, gym, viewer, env, attractor_properties.target)
-
-        attractor_handle = gym.create_rigid_body_attractor(env, attractor_properties)
-        attractor_handles[i].append(attractor_handle)
-
-    baxter_handles.append(baxter_handle)
-
-# get joint limits and ranges for baxter
-baxter_dof_props = gym.get_actor_dof_properties(envs[0], baxter_handles[0])
-baxter_lower_limits = baxter_dof_props['lower']
-baxter_upper_limits = baxter_dof_props['upper']
-baxter_ranges = baxter_upper_limits - baxter_lower_limits
-baxter_mids = 0.5 * (baxter_upper_limits + baxter_lower_limits)
-baxter_num_dofs = len(baxter_dof_props)
-
-# override default stiffness and damping values
-baxter_dof_props['stiffness'].fill(100.0)
-baxter_dof_props['damping'].fill(100.0)
-
-# Set base to track pose zero to maintain posture
-baxter_dof_props["driveMode"][0] = gymapi.DOF_MODE_POS
-
-for env in envs:
-    gym.set_actor_dof_properties(env, baxter_handles[i], baxter_dof_props)
-# a helper function to initialize all envs
-
-
-def init():
-    for i in range(num_envs):
-        # set updated stiffness and damping properties
-        gym.set_actor_dof_properties(envs[i], baxter_handles[i], baxter_dof_props)
-
-        baxter_dof_states = gym.get_actor_dof_states(envs[i], baxter_handles[i], gymapi.STATE_NONE)
-        for j in range(baxter_num_dofs):
-            baxter_dof_states['pos'][j] = baxter_mids[j] - baxter_mids[j] * .5
-        gym.set_actor_dof_states(envs[i], baxter_handles[i], baxter_dof_states, gymapi.STATE_POS)
-
-        # pose.p.x = 0.2 * math.sin(1.5 * t - math.pi * float(i) / num_envs)
-        # pose.p.y = 0.7 + 0.1 * math.cos(2.5 * t - math.pi * float(i) / num_envs)
-        # pose.p.z = 0.2 * math.cos(1.5 * t - math.pi * float(i) / num_envs)gymapi.Vec3(0.6, 0.8, 0.0)
-
+baxter_begin_dof = 10
 
 def update_baxter(t):
     gym.clear_lines(viewer)
     for i in range(num_envs):
-        for j in range(len(attractor_handles[i])):
-            attractor_properties = gym.get_attractor_properties(envs[i], attractor_handles[i][j])
-            attr_pose = copy(base_poses[j])
-            target_pose = gymapi.Transform()
-            sec = 20
+        actions = actions.clone().to('cuda:0')
+        targets = baxter_dof_targets[:, baxter_begin_dof:num_baxter_dofs] + baxter_dof_speed_scales[baxter_begin_dof:] * dt * actions * action_scale
 
-            target_pose.p = object_pose.p - spawn_height
-            attr_pose.p = attr_pose.p + (target_pose.p - attr_pose.p) * t / sec
-            if (t < sec):
-                gym.set_attractor_target(envs[i], attractor_handles[i][j], attr_pose)
-            gymutil.draw_lines(axes_geom, gym, viewer, envs[i], attr_pose)
-            gymutil.draw_lines(sphere_geom, gym, viewer, envs[i], attr_pose)
-
+        baxter_dof_targets[:, baxter_begin_dof:num_baxter_dofs] = tensor_clamp(
+            targets, baxter_dof_lower_limits[baxter_begin_dof:], baxter_dof_upper_limits[baxter_begin_dof:])
+        env_ids_int32 = torch.arange(num_envs, dtype=torch.int32, device='cuda:0')
+        gym.set_dof_position_target_tensor(sim,
+                                                gymtorch.unwrap_tensor(baxter_dof_targets))
 
 init()
 

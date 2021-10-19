@@ -8,10 +8,10 @@
             "name": "Python: 当前文件",
             "type": "python",
             "request": "launch",
-            "program": "/home/lohse/Isaac-drlgrasp/rlgpu/train.py",
+            "program": "/home/lohse/Isaac-drlgrasp/envs_test/baxter_test.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/rlgpu",
-            "args": ["--task", "BaxterCabinet"],
+            "args": [],
             "justMyCode": false
         }
     ]

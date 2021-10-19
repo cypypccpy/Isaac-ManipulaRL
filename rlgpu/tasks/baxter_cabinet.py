@@ -60,7 +60,7 @@ class BaxterCabinet(BaseTask):
         self.prop_length = 0.08
         self.prop_spacing = 0.09
 
-        self.num_obs = 23
+        self.num_obs = 13
         self.num_acts = 9
         self.baxter_begin_dof = 10
 
@@ -403,8 +403,8 @@ class BaxterCabinet(BaseTask):
 
         # num: 12 + 12 + 3 + 1 + 1
         # print(self.cabinet_dof_pos[self.cabinet_dof_pos > 0.01])
-        self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:], self.baxter_dof_vel[:, self.baxter_begin_dof:] * self.dof_vel_scale, to_target,
-                                  self.cabinet_dof_pos[:, 3].unsqueeze(-1), self.cabinet_dof_vel[:, 3].unsqueeze(-1)), dim=-1)
+        self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:], to_target,
+                                  self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
         # torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
@@ -601,7 +601,7 @@ def compute_baxter_reward(
         + around_handle_reward_scale * around_handle_reward + open_reward_scale * open_reward \
         + finger_dist_reward_scale * finger_dist_reward - action_penalty_scale * action_penalty
 
-    rewards = torch.where(open_reward > 0.38, rewards + 1,
+    rewards = torch.where(open_reward > 0.35, rewards + 1,
                           torch.where(open_reward > 0.2, rewards + 0.8,
                                       torch.where(open_reward > 0.15, rewards + 0.65,
                                                   torch.where(open_reward > 0.1, rewards + 0.5,
