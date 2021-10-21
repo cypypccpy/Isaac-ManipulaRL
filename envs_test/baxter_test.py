@@ -97,10 +97,15 @@ if sim is None:
 
 # add ground plane
 plane_params = gymapi.PlaneParams()
+plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
 gym.add_ground(sim, plane_params)
 
 # create viewer
-viewer = gym.create_viewer(sim, gymapi.CameraProperties())
+viewer_props = gymapi.CameraProperties()
+viewer_props.horizontal_fov = 75.0
+viewer_props.width = 1920
+viewer_props.height = 1080
+viewer = gym.create_viewer(sim, viewer_props)
 if viewer is None:
     print("*** Failed to create viewer")
     quit()
@@ -167,6 +172,7 @@ asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
 asset_options.armature = 0.005
 cabinet_asset = gym.load_asset(sim, asset_root, cabinet_asset_file, asset_options)
 
+baxter_default_dof_pos = to_torch([0, 0, -1.57, 0, 2.5, 0, 0, 0, 0, 0, 0, -1.57, 0, 2.5, 0, 0, 0, 0, 0], device='cuda:0')
 baxter_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 400, 400, 400, 400, 400, 400, 400], dtype=torch.float, device='cuda:0')
 baxter_dof_damping = to_torch([80, 80, 80, 80, 80, 80, 80, 1.0e2, 1.0e2, 1.0e2, 1.0e2, 1.0e2, 80, 80, 80, 80, 80, 80, 80], dtype=torch.float, device='cuda:0')
 baxter_dof_lower_limit = to_torch([-3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14, -3.14], dtype=torch.float, device='cuda:0')
@@ -200,6 +206,7 @@ for i in range(num_baxter_dofs):
     # baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
     # baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
 
+baxter_mids = 0.5 * (baxter_dof_props['lower'] + baxter_dof_props['lower'])
 baxter_dof_lower_limits = to_torch(baxter_dof_lower_limits, device='cuda:0')
 baxter_dof_upper_limits = to_torch(baxter_dof_upper_limits, device='cuda:0')
 baxter_dof_speed_scales = torch.ones_like(baxter_dof_lower_limits)
@@ -230,6 +237,8 @@ cabinets = []
 default_prop_states = []
 prop_start = []
 envs = []
+attractor_handles = []
+
 
 for i in range(num_envs):
     env_ptr = gym.create_env(sim, lower, upper, int(np.sqrt(num_envs)))
@@ -242,6 +251,28 @@ for i in range(num_envs):
     dy = np.random.rand() - 0.5
     cabinet_actor = gym.create_actor(env_ptr, cabinet_asset, cabinet_pose, "cabinet", i, 2, 0)
     gym.set_actor_dof_properties(env_ptr, cabinet_actor, cabinet_dof_props)
+    
+    attractor_handles.append([])
+    baxter_body_dict = gym.get_actor_rigid_body_dict(env_ptr, baxter_actor)
+    baxter_props = gym.get_actor_rigid_body_states(env_ptr, baxter_actor, gymapi.STATE_POS)
+
+    attractor_properties = gymapi.AttractorProperties()
+    body_handle = gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
+    attractor_properties.axes = gymapi.AXIS_ALL
+    attractor_properties.target = baxter_props['pose'][:][baxter_body_dict["right_wrist"]]
+    attractor_properties.rigid_handle = body_handle
+    attractor_handle = gym.create_rigid_body_attractor(env_ptr, attractor_properties)
+    
+    attractor_handles[i].append(attractor_handle)
+    
+    # attractor_properties = gymapi.AttractorProperties()
+    # body_handle = gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_r_finger")
+    # attractor_properties.axes = gymapi.AXIS_ALL
+    # attractor_properties.target = baxter_props['pose'][:][baxter_body_dict["r_gripper_r_finger"]]
+    # attractor_properties.rigid_handle = body_handle
+    # attractor_handle = gym.create_rigid_body_attractor(env_ptr, attractor_properties)
+    
+   # attractor_handles[i].append(attractor_handle)
 
     envs.append(env_ptr)
     baxters.append(baxter_actor)
@@ -272,7 +303,7 @@ baxter_local_grasp_pose.p += gymapi.Vec3(*get_axis_params(0.04, grasp_pose_axis)
 baxter_local_grasp_pos = to_torch([baxter_local_grasp_pose.p.x, baxter_local_grasp_pose.p.y,
                                         baxter_local_grasp_pose.p.z], device='cuda:0').repeat((num_envs, 1))
 baxter_local_grasp_rot = to_torch([baxter_local_grasp_pose.r.x, baxter_local_grasp_pose.r.y,
-                                        baxter_local_grasp_pose.r.z, baxter_local_grasp_pose.r.w], device=device).repeat((num_envs, 1))
+                                        baxter_local_grasp_pose.r.z, baxter_local_grasp_pose.r.w], device='cuda:0').repeat((num_envs, 1))
 
 drawer_local_grasp_pose = gymapi.Transform()
 drawer_local_grasp_pose.p = gymapi.Vec3(*get_axis_params(0.01, grasp_pose_axis, 0.3))
@@ -280,7 +311,7 @@ drawer_local_grasp_pose.r = gymapi.Quat(0, 0, 0, 1)
 drawer_local_grasp_pos = to_torch([drawer_local_grasp_pose.p.x, drawer_local_grasp_pose.p.y,
                                         drawer_local_grasp_pose.p.z], device='cuda:0').repeat((num_envs, 1))
 drawer_local_grasp_rot = to_torch([drawer_local_grasp_pose.r.x, drawer_local_grasp_pose.r.y,
-                                        drawer_local_grasp_pose.r.z, drawer_local_grasp_pose.r.w], device=device).repeat((num_envs, 1))
+                                        drawer_local_grasp_pose.r.z, drawer_local_grasp_pose.r.w], device='cuda:0').repeat((num_envs, 1))
 
 gripper_forward_axis = to_torch([0, 0, 1], device='cuda:0').repeat((num_envs, 1))
 drawer_inward_axis = to_torch([-1, 0, 0], device='cuda:0').repeat((num_envs, 1))
@@ -299,20 +330,31 @@ baxter_lfinger_rot = torch.zeros_like(baxter_local_grasp_rot)
 baxter_rfinger_rot = torch.zeros_like(baxter_local_grasp_rot)
 
 baxter_begin_dof = 10
+target_poses = []
 
+target_pose1 = gymapi.Transform()
+target_pose1.p = gymapi.Vec3(0.8, 0.1, 1.4)
+target_pose1.r = gymapi.Quat.from_euler_zyx(-0.5 * math.pi, 0, 0.5 * math.pi)
+target_poses.append(target_pose1)
+target_pose2 = gymapi.Transform()
+target_pose2.p = gymapi.Vec3(0.7, 0.7, 1.66)
+target_pose2.r = gymapi.Quat.from_euler_zyx(-0.5 * math.pi, 0, 0.5 * math.pi)
+target_poses.append(target_pose2)
+
+attractor_properties = gym.get_attractor_properties(envs[0], attractor_handles[0][0])
+base_pose = attractor_properties.target
 def update_baxter(t):
     gym.clear_lines(viewer)
     for i in range(num_envs):
-        actions = actions.clone().to('cuda:0')
-        targets = baxter_dof_targets[:, baxter_begin_dof:num_baxter_dofs] + baxter_dof_speed_scales[baxter_begin_dof:] * dt * actions * action_scale
-
-        baxter_dof_targets[:, baxter_begin_dof:num_baxter_dofs] = tensor_clamp(
-            targets, baxter_dof_lower_limits[baxter_begin_dof:], baxter_dof_upper_limits[baxter_begin_dof:])
-        env_ids_int32 = torch.arange(num_envs, dtype=torch.int32, device='cuda:0')
-        gym.set_dof_position_target_tensor(sim,
-                                                gymtorch.unwrap_tensor(baxter_dof_targets))
-
-init()
+        for j in range(len(attractor_handles[i])):
+            attractor_pose = copy(base_pose)
+            sec = 5
+            attractor_pose.p = attractor_pose.p + (target_poses[j].p - attractor_pose.p) * t / sec
+            attractor_pose.r = target_poses[j].r
+            if (t < sec):
+                gym.set_attractor_target(envs[i], attractor_handles[i][j], attractor_pose)
+            gymutil.draw_lines(axes_geom, gym, viewer, envs[i], target_poses[j])
+            gymutil.draw_lines(sphere_geom, gym, viewer, envs[i], target_poses[j])
 
 next_baxter_update_time = 0.1
 frame = 0
@@ -322,12 +364,12 @@ camera_props = gymapi.CameraProperties()
 camera_props.width = 1280
 camera_props.height = 1280
 camera_props.enable_tensors = True
-camera_handle = gym.create_camera_sensor(env, camera_props)
+camera_handle = gym.create_camera_sensor(envs[0], camera_props)
 
 transform = gymapi.Transform()
 transform.p = gymapi.Vec3(1,1,1)
 transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0,1,0), np.radians(45.0))
-gym.set_camera_transform(camera_handle, env, transform)
+gym.set_camera_transform(camera_handle, envs[0], transform)
 debug_fig = plt.figure("debug")
 
 while not gym.query_viewer_has_closed(viewer):
