@@ -8,7 +8,7 @@
             "name": "Python: 当前文件",
             "type": "python",
             "request": "launch",
-            "program": "/home/lohse/Isaac-drlgrasp/envs_test/baxter_test.py",
+            "program": "/home/lohse/Isaac-drlgrasp/envs_test/baxter_osc.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/rlgpu",
             "args": [],
