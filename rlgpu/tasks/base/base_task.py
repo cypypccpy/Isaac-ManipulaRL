@@ -127,6 +127,7 @@ class BaseTask():
         if self.dr_randomizations.get('actions', None):
             actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
+        
         # apply actions
         self.pre_physics_step(actions)
 

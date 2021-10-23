@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 
@@ -85,7 +86,7 @@ plane_params.normal = gymapi.Vec3(0, 0, 1)
 gym.add_ground(sim, plane_params)
 
 # Load baxter asset
-asset_root = "../assets"
+asset_root = "/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/assets"
 baxter_asset_file = "baxter/baxter_isaac.urdf"
 cabinet_asset_file = "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
 

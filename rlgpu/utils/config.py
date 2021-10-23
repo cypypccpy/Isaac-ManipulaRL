@@ -261,7 +261,7 @@ def parse_sim_params(args, cfg, cfg_train):
 
 def get_args(benchmark=False, use_rlg_config=False):
     custom_parameters = [
-        {"name": "--test", "action": "store_true", "default": False,
+        {"name": "--test", "action": "store_true", "default": True,
             "help": "Run trained policy, no training"},
         {"name": "--play", "action": "store_true", "default": False,
             "help": "Run trained policy, the same as test, can be used only by rl_games RL library"},
@@ -273,7 +273,7 @@ def get_args(benchmark=False, use_rlg_config=False):
             "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False,
             "help": "Use horovod for multi-gpu training, have effect only with rl_games RL library"},
-        {"name": "--task", "type": str, "default": "Humanoid",
+        {"name": "--task", "type": str, "default": "BaxterCabinet",
             "help": "Can be BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, Ingenuity"},
         {"name": "--task_type", "type": str,
             "default": "Python", "help": "Choose Python or C++"},
