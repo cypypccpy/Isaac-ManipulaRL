@@ -14,6 +14,7 @@ baxter Operational Space Control
 Operational Space Control of baxter robot to demonstrate Jacobian and Mass Matrix Tensor APIs
 """
 
+from os import device_encoding
 from isaacgym import gymapi
 from isaacgym import gymutil
 from isaacgym import gymtorch
@@ -149,7 +150,7 @@ for i in range(num_cabinet_dofs):
 # Set up the env grid
 num_envs = 1
 num_per_row = int(math.sqrt(num_envs))
-spacing = 1.0
+spacing = 1.5
 env_lower = gymapi.Vec3(-spacing, -spacing, 0.0)
 env_upper = gymapi.Vec3(spacing, spacing, spacing)
 
@@ -158,6 +159,13 @@ pose = gymapi.Transform()
 pose.p = gymapi.Vec3(1.4, 0, 1.0)
 pose.r = gymapi.Quat(0, 0, 1, 0)
 default_dof_pos = to_torch([0, 0, -1.57, 0, 2.5, 0, 0, 0, 0, 0, 0, -1.57, 0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 0], device='cpu')
+# dof_state_tensor = gym.acquire_dof_state_tensor(sim)
+# dof_state = gymtorch.wrap_tensor(dof_state_tensor)
+# baxter_dof_state = dof_state.view(num_envs, -1, 2)[:, :19]
+# baxter_dof_pos = baxter_dof_state[..., 0]
+# baxter_dof_vel = baxter_dof_state[..., 1]
+# print(baxter_dof_pos)
+
 cabinet_start_pose = gymapi.Transform()
 cabinet_start_pose.p = gymapi.Vec3(*get_axis_params(1.1, 2))
 
@@ -274,17 +282,24 @@ pos_des_list.append(init_pos.clone())
 orn_des_list.append(init_pos.clone())
 pose_index = 1
 
-pos, orn = set_hand_pose(0.7, 0.0, 1.44, -0.5, -0.5, 0.5, 0.5)
+pos, orn = set_hand_pose(0.7, 0.0, 1.46, -0.5, -0.5, 0.5, 0.5)
 pos_des_list.append(pos)
 orn_des_list.append(orn)
-pos, orn = set_hand_pose(0.6, 0.0, 1.44, -0.5, -0.5, 0.5, 0.5)
+pos, orn = set_hand_pose(0.6, 0.0, 1.46, -0.5, -0.5, 0.5, 0.5)
 pos_des_list.append(pos)
 orn_des_list.append(orn)
-pos, orn = set_hand_pose(1.0, 0.0, 1.44, -0.5, -0.5, 0.5, 0.5)
+pos, orn = set_hand_pose(1.0, 0.0, 1.46, -0.5, -0.5, 0.5, 0.5)
 pos_des_list.append(pos)
 orn_des_list.append(orn)
 
 gripper_executed = True
+is_gripper_open = 0
+
+print(dof_pos.shape)
+flag = to_torch([is_gripper_open], dtype=torch.float, device='cpu')
+dof_pos_flag = torch.cat((dof_pos, flag.unsqueeze(-1).unsqueeze(0)), dim=1)
+dof_pos_np = dof_pos_flag.squeeze(0)
+
 while not gym.query_viewer_has_closed(viewer):
 
     # Randomize desired hand orientations
@@ -300,6 +315,11 @@ while not gym.query_viewer_has_closed(viewer):
     gym.refresh_jacobian_tensors(sim)
     gym.refresh_mass_matrix_tensors(sim)
     gym.refresh_actor_root_state_tensor(sim)
+
+    flag = to_torch([is_gripper_open], dtype=torch.float, device='cpu')
+    dof_pos_flag = torch.cat((dof_pos, flag.unsqueeze(-1).unsqueeze(0)), dim=1)
+    dof_pos_np = torch.cat((dof_pos_np, dof_pos_flag.squeeze(0)), dim=1)
+
 
     # Get current hand poses
     pos_cur = rb_states[hand_idxs, :3]
@@ -329,12 +349,17 @@ while not gym.query_viewer_has_closed(viewer):
     # Set tensor action
     if gripper_executed == True and itr % 2 == 0:
         gym.set_dof_actuation_force_tensor(sim, gymtorch.unwrap_tensor(u))
-
-    if torch.abs(dpose).sum() < 0.1:
+    
+    print(torch.abs(dpose).sum())
+    if torch.abs(dpose).sum() < 0.15:
         if pose_index == 1:
             gripper_executed = open_close_gripper(envs[0], 1)
+            is_gripper_open = 1
+
         if pose_index == 2:
             gripper_executed = open_close_gripper(envs[0], 0)
+            is_gripper_open = 0
+            
         if pose_index < len(pos_des_list) - 1:
             pose_index += 1
 
@@ -348,6 +373,9 @@ while not gym.query_viewer_has_closed(viewer):
     gym.sync_frame_time(sim)
 
 print("Done")
+print(dof_pos_np.shape)
+dof_pos_recorder = np.array(dof_pos_np)
+np.savetxt('npresult1.txt', dof_pos_recorder)
 
 gym.destroy_viewer(viewer)
 gym.destroy_sim(sim)

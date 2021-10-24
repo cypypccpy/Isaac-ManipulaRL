@@ -261,7 +261,7 @@ def parse_sim_params(args, cfg, cfg_train):
 
 def get_args(benchmark=False, use_rlg_config=False):
     custom_parameters = [
-        {"name": "--test", "action": "store_true", "default": True,
+        {"name": "--test", "action": "store_true", "default": False,
             "help": "Run trained policy, no training"},
         {"name": "--play", "action": "store_true", "default": False,
             "help": "Run trained policy, the same as test, can be used only by rl_games RL library"},

@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
+from .demostration import Demostration
 
 
 class BaxterCabinet(BaseTask):
@@ -78,6 +79,10 @@ class BaxterCabinet(BaseTask):
         self.camera_props.enable_tensors = True
         self.debug_fig = plt.figure("debug")
 
+        self.demostration = Demostration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
+        self.demostration_round = 0
+        self.demostration_step = 0
+
         super().__init__(cfg=self.cfg)
 
         # get gym GPU state tensors
@@ -120,6 +125,9 @@ class BaxterCabinet(BaseTask):
         self.sim_params.gravity.x = 0
         self.sim_params.gravity.y = 0
         self.sim_params.gravity.z = -9.81
+        self.sim_params.physx.solver_type = 1
+        self.sim_params.physx.num_position_iterations = 4
+        self.sim_params.physx.num_velocity_iterations = 1
         self.sim = super().create_sim(
             self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self._create_ground_plane()
@@ -196,15 +204,18 @@ class BaxterCabinet(BaseTask):
 
             self.baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
             self.baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
-            # self.baxter_dof_lower_limits.append(baxter_dof_props['lower'][i])
-            # self.baxter_dof_upper_limits.append(baxter_dof_props['upper'][i])
 
+        self.baxter_ranges = baxter_dof_props['lower'] - baxter_dof_props['upper']
+        self.baxter_mids = 0.5 * (baxter_dof_props['upper'] + baxter_dof_props['lower'])
+        baxter_num_dofs = len(baxter_dof_props)
+
+        # set default DOF states
+        self.default_dof_state = np.zeros(baxter_num_dofs, gymapi.DofState.dtype)
+        self.default_dof_state["pos"] = self.baxter_mids
         self.baxter_dof_lower_limits = to_torch(self.baxter_dof_lower_limits, device=self.device)
         self.baxter_dof_upper_limits = to_torch(self.baxter_dof_upper_limits, device=self.device)
         self.baxter_dof_speed_scales = torch.ones_like(self.baxter_dof_lower_limits)
         self.baxter_dof_speed_scales[[17, 18]] = 0.1
-        # baxter_dof_props['effort'][17] = 200
-        # baxter_dof_props['effort'][18] = 200
 
         # set cabinet dof properties
         cabinet_dof_props = self.gym.get_asset_dof_properties(cabinet_asset)
@@ -255,6 +266,10 @@ class BaxterCabinet(BaseTask):
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             baxter_actor = self.gym.create_actor(env_ptr, baxter_asset, baxter_start_pose, "baxter", i, 1, 0)
+            
+            # Set initial DOF states
+            self.gym.set_actor_dof_states(env_ptr, baxter_actor, self.default_dof_state, gymapi.STATE_ALL)
+            
             self.gym.set_actor_dof_properties(env_ptr, baxter_actor, baxter_dof_props)
 
             if self.aggregate_mode == 2:
@@ -434,9 +449,12 @@ class BaxterCabinet(BaseTask):
         env_ids_int32 = env_ids.to(dtype=torch.int32)
 
         # reset baxter
+        # pos = tensor_clamp(
+        #     self.baxter_default_dof_pos.unsqueeze(0) + 0.25 * (torch.rand((len(env_ids), self.num_baxter_dofs), device=self.device) - 0.5),
+        #     self.baxter_dof_lower_limits, self.baxter_dof_upper_limits)
         pos = tensor_clamp(
-            self.baxter_default_dof_pos.unsqueeze(0) + 0.25 * (torch.rand((len(env_ids), self.num_baxter_dofs), device=self.device) - 0.5),
-            self.baxter_dof_lower_limits, self.baxter_dof_upper_limits)
+            self.baxter_default_dof_pos.unsqueeze(0),
+            self.baxter_dof_lower_limits, self.baxter_dof_upper_limits)     
         self.baxter_dof_pos[env_ids, :] = pos
         self.baxter_dof_vel[env_ids, :] = torch.zeros_like(self.baxter_dof_vel[env_ids])
         self.baxter_dof_targets[env_ids, :self.num_baxter_dofs] = pos
@@ -463,16 +481,32 @@ class BaxterCabinet(BaseTask):
 
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
+        self.demostration_step = 0
+        self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        self.actions = actions.clone().to(self.device)
-        targets = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] + self.baxter_dof_speed_scales[self.baxter_begin_dof:] * self.dt * self.actions * self.action_scale
+        if self.demostration_round < 1:
+            self.actions = self.demostration.get_dof_pos(self.demostration_step)
+            self.actions = self.actions.to(self.device)
+            self.demostration_step += 1
 
-        self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] = tensor_clamp(
-            targets, self.baxter_dof_lower_limits[self.baxter_begin_dof:], self.baxter_dof_upper_limits[self.baxter_begin_dof:])
-        env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
-        self.gym.set_dof_position_target_tensor(self.sim,
-                                                gymtorch.unwrap_tensor(self.baxter_dof_targets))
+            self.baxter_dof_targets[:, :self.num_baxter_dofs] = self.actions
+            self.gym.set_dof_position_target_tensor(self.sim,
+                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
+
+            if self.demostration_step == self.demostration.step_size:
+                self.reset_buf = torch.ones_like(self.reset_buf)
+        else:
+            self.actions = actions.clone().to(self.device)
+
+            # targets = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] + self.baxter_dof_speed_scales[self.baxter_begin_dof:] * self.dt * self.actions * self.action_scale
+            targets = self.actions
+            self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] = targets
+            self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] = tensor_clamp(
+                targets, self.baxter_dof_lower_limits[self.baxter_begin_dof:], self.baxter_dof_upper_limits[self.baxter_begin_dof:])
+            env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
+            self.gym.set_dof_position_target_tensor(self.sim,
+                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
 
     def post_physics_step(self):
         self.progress_buf += 1
