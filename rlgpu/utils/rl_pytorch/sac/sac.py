@@ -281,38 +281,24 @@ class PPO:
                 actions_log_prob_batch, entropy_batch, value_batch, mu_batch, sigma_batch = self.actor_critic.evaluate(obs_batch,
                                                                                                                        states_batch,
                                                                                                                        actions_batch)
+                new_action, log_prob = self.actor_critic.evaluate(states_batch)
+                # V value loss
+                value = self.value_net(states_batch)
+                new_q1_value = self.q1_net(states_batch, new_action)
+                new_q2_value = self.q2_net(states_batch, new_action)
+                next_value = torch.min(new_q1_value, new_q2_value) - log_prob
+                value_loss = F.mse_loss(value, next_value.detach())
 
-                # KL
-                if self.desired_kl != None and self.schedule == 'adaptive':
+                # Soft q  loss
+                q1_value = self.q1_net(states_batch, actions_batch)
+                q2_value = self.q2_net(states_batch, actions_batch)
+                target_value = self.target_value_net(next_state)
+                target_q_value = reward + done * self.gamma * target_value
+                q1_value_loss = F.mse_loss(q1_value, target_q_value.detach())
+                q2_value_loss = F.mse_loss(q2_value, target_q_value.detach())
 
-                    kl = torch.sum(
-                        sigma_batch - old_sigma_batch + (torch.square(old_sigma_batch.exp()) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch.exp())) - 0.5, axis=-1)
-                    kl_mean = torch.mean(kl)
-
-                    if kl_mean > self.desired_kl * 2.0:
-                        self.step_size = max(1e-5, self.step_size / 1.5)
-                    elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
-                        self.step_size = min(1e-2, self.step_size * 1.5)
-
-                    for param_group in self.optimizer.param_groups:
-                        param_group['lr'] = self.step_size
-
-                # Surrogate loss
-                ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
-                surrogate = -torch.squeeze(advantages_batch) * ratio
-                surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(ratio, 1.0 - self.clip_param,
-                                                                                   1.0 + self.clip_param)
-                surrogate_loss = torch.max(surrogate, surrogate_clipped).mean()
-
-                # Value function loss
-                if self.use_clipped_value_loss:
-                    value_clipped = target_values_batch + (value_batch - target_values_batch).clamp(-self.clip_param,
-                                                                                                    self.clip_param)
-                    value_losses = (value_batch - returns_batch).pow(2)
-                    value_losses_clipped = (value_clipped - returns_batch).pow(2)
-                    value_loss = torch.max(value_losses, value_losses_clipped).mean()
-                else:
-                    value_loss = (returns_batch - value_batch).pow(2).mean()
+                # Policy loss
+                policy_loss = (log_prob - torch.min(new_q1_value, new_q2_value)).mean()
 
                 loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
 

@@ -25,6 +25,8 @@ import numpy as np
 import torch
 from torch._C import _jit_pass_onnx_block
 
+from isaac_ros_server import joint_states_server
+
 
 def orientation_error(desired, current):
     cc = quat_conjugate(current)
@@ -132,9 +134,9 @@ default_dof_state["pos"] = baxter_mids
 # default_dof_state["pos"][10:19] = baxter_mids[10:19]
 
 # set DOF control properties (except grippers)
-baxter_dof_props["driveMode"][:17].fill(gymapi.DOF_MODE_EFFORT)
-baxter_dof_props["stiffness"][:17].fill(0.0)
-baxter_dof_props["damping"][:17].fill(0.0)
+baxter_dof_props["driveMode"][:17].fill(gymapi.DOF_MODE_POS)
+# baxter_dof_props["stiffness"][:17].fill(0.0)
+# baxter_dof_props["damping"][:17].fill(0.0)
 
 # # set DOF control properties for grippers
 baxter_dof_props["driveMode"][17:].fill(gymapi.DOF_MODE_POS)
@@ -295,7 +297,6 @@ orn_des_list.append(orn)
 gripper_executed = True
 is_gripper_open = 0
 
-print(dof_pos.shape)
 flag = to_torch([is_gripper_open], dtype=torch.float, device='cpu')
 dof_pos_flag = torch.cat((dof_pos, flag.unsqueeze(-1).unsqueeze(0)), dim=1)
 dof_pos_np = dof_pos_flag.squeeze(0)
@@ -320,7 +321,9 @@ while not gym.query_viewer_has_closed(viewer):
     dof_pos_flag = torch.cat((dof_pos, flag.unsqueeze(-1).unsqueeze(0)), dim=1)
     dof_pos_np = torch.cat((dof_pos_np, dof_pos_flag.squeeze(0)), dim=1)
 
+    joint_position = dof_pos[0, 10:17, 0].detach().numpy().tolist()
 
+    joint_states_server(joint_position)
     # Get current hand poses
     pos_cur = rb_states[hand_idxs, :3]
     orn_cur = rb_states[hand_idxs, 3:7]
@@ -330,28 +333,32 @@ while not gym.query_viewer_has_closed(viewer):
         pos_des = pos_des_list[pose_index]
         orn_des = orn_des_list[pose_index]
 
-    m_inv = torch.inverse(mm)
-    m_eef = torch.inverse(j_eef @ m_inv @ torch.transpose(j_eef, 1, 2))
     orn_cur /= torch.norm(orn_cur, dim=-1).unsqueeze(-1)
     orn_err = orientation_error(orn_des, orn_cur)
 
-    pos_err = kp * (pos_des - pos_cur)
+    pos_err = (pos_des - pos_cur)
 
     if not args.pos_control:
         pos_err *= 0
 
-    dpose = torch.cat([pos_err, orn_err], -1)
-    
-    u = torch.transpose(j_eef, 1, 2) @ m_eef @ (kp * dpose).unsqueeze(-1) - kv * mm @ dof_vel
+    dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
+    # solve damped least squares
+    j_eef_T = torch.transpose(j_eef, 1, 2)
+    d = 0.05  # damping term
+    lmbda = torch.eye(6).to('cpu') * (d ** 2)
+    u = (j_eef_T @ torch.inverse(j_eef @ j_eef_T + lmbda) @ dpose).view(num_envs, 19, 1)
+
+    # update position targets
+    pos_target = dof_pos + u
+
     cabinet_u = to_torch([0, 0, 0, 0], device='cpu')
-    u = torch.cat((u, cabinet_u.unsqueeze(0).unsqueeze(-1)), dim = 1)
+    pos_target = torch.cat((pos_target, cabinet_u.unsqueeze(0).unsqueeze(-1)), dim = 1)
 
     # Set tensor action
     if gripper_executed == True and itr % 2 == 0:
-        gym.set_dof_actuation_force_tensor(sim, gymtorch.unwrap_tensor(u))
-    
-    print(torch.abs(dpose).sum())
-    if torch.abs(dpose).sum() < 0.15:
+        gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
+
+    if torch.abs(dpose).sum() < 0.0:
         if pose_index == 1:
             gripper_executed = open_close_gripper(envs[0], 1)
             is_gripper_open = 1

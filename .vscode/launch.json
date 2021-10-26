@@ -8,9 +8,9 @@
             "name": "Python: 当前文件",
             "type": "python",
             "request": "launch",
-            "program": "/home/lohse/Isaac-drlgrasp/envs_test/baxter_osc.py",
+            "program": "/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/baxter_osc.py",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/rlgpu",
+            "cwd": "/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test",
             "args": [],
             "justMyCode": false
         }
