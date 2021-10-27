@@ -5,8 +5,9 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from rl_pytorch.ppo import PPO, ActorCritic
+#from rl_pytorch.ppo import PPO, ActorCritic
 #from utils.rl_pytorch.ppo import PPO, ActorCritic
+from utils.rl_pytorch.sac import SAC, ActorCritic
 
 def process_ppo(args, env, cfg_train, logdir):
     learn_cfg = cfg_train["learn"]
@@ -20,7 +21,7 @@ def process_ppo(args, env, cfg_train, logdir):
         chkpt = args.resume
 
     """Set up the PPO system for training or inferencing."""
-    ppo = PPO(vec_env=env,
+    ppo = SAC(vec_env=env,
               actor_critic_class=ActorCritic,
               num_transitions_per_env=learn_cfg["nsteps"],
               num_learning_epochs=learn_cfg["noptepochs"],

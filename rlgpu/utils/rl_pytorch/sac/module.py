@@ -18,11 +18,11 @@ class ActorCritic(nn.Module):
         self.asymmetric = asymmetric
 
         # initialize networks
-        self.value_net = ValueNet(states_shape[0]).cuda()
-        self.target_value_net = ValueNet(states_shape[0]).cuda()
-        self.q1_net = SoftQNet(states_shape[0], actions_shape[0]).cuda()
-        self.q2_net = SoftQNet(states_shape[0], actions_shape[0]).cuda()
-        self.policy_net = PolicyNet(states_shape[0], actions_shape[0]).cuda()
+        self.value_net = ValueNet(obs_shape[0]).cuda()
+        self.target_value_net = ValueNet(obs_shape[0]).cuda()
+        self.q1_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
+        self.q2_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
+        self.policy_net = PolicyNet(obs_shape[0], actions_shape[0]).cuda()
 
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
@@ -31,7 +31,7 @@ class ActorCritic(nn.Module):
         raise NotImplementedError
 
     def act(self, states):
-        mean, log_std = self.forward(states)
+        mean, log_std = self.policy_net(states)
         std = log_std.exp()
         normal = Normal(mean, std)
 
@@ -44,9 +44,9 @@ class ActorCritic(nn.Module):
     #     actions_mean = self.actor(observations)
     #     return actions_mean
 
-    def evaluate(self, observations, states, actions, epsilon=1e-6):
+    def evaluate(self, states, epsilon=1e-6):
 
-        mean, log_std = self.forward(states)
+        mean, log_std = self.policy_net(states)
         std = log_std.exp()
         normal = Normal(mean, std)
         noise = Normal(0, 1)

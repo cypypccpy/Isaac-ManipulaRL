@@ -1,3 +1,3 @@
-from .storage import RolloutStorage
+from .storage import ReplayBeffer
 from .module import ActorCritic
-from .ppo import PPO
+from .sac import SAC
