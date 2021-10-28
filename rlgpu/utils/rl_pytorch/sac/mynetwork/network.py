@@ -11,9 +11,9 @@ from torch.distributions import Normal
 class ValueNet(nn.Module):
     def __init__(self, state_dim, edge=3e-3):
         super(ValueNet, self).__init__()
-        self.linear1 = nn.Linear(state_dim, 256)
-        self.linear2 = nn.Linear(256, 256)
-        self.linear3 = nn.Linear(256, 1)
+        self.linear1 = nn.Linear(state_dim, 128)
+        self.linear2 = nn.Linear(128, 64)
+        self.linear3 = nn.Linear(64, 1)
 
         self.linear3.weight.data.uniform_(-edge, edge)
         self.linear3.bias.data.uniform_(-edge, edge)
@@ -30,9 +30,9 @@ class ValueNet(nn.Module):
 class SoftQNet(nn.Module):
     def __init__(self, state_dim, action_dim, edge=3e-3):
         super(SoftQNet, self).__init__()
-        self.linear1 = nn.Linear(state_dim + action_dim, 256)
-        self.linear2 = nn.Linear(256, 256)
-        self.linear3 = nn.Linear(256, 1)
+        self.linear1 = nn.Linear(state_dim + action_dim, 128)
+        self.linear2 = nn.Linear(128, 64)
+        self.linear3 = nn.Linear(64, 1)
 
         self.linear3.weight.data.uniform_(-edge, edge)
         self.linear3.bias.data.uniform_(-edge, edge)
@@ -53,14 +53,14 @@ class PolicyNet(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
-        self.linear1 = nn.Linear(state_dim, 256)
-        self.linear2 = nn.Linear(256, 256)
+        self.linear1 = nn.Linear(state_dim, 128)
+        self.linear2 = nn.Linear(128, 64)
 
-        self.mean_linear = nn.Linear(256, action_dim)
+        self.mean_linear = nn.Linear(64, action_dim)
         self.mean_linear.weight.data.uniform_(-edge, edge)
         self.mean_linear.bias.data.uniform_(-edge, edge)
 
-        self.log_std_linear = nn.Linear(256, action_dim)
+        self.log_std_linear = nn.Linear(64, action_dim)
         self.log_std_linear.weight.data.uniform_(-edge, edge)
         self.log_std_linear.bias.data.uniform_(-edge, edge)
 

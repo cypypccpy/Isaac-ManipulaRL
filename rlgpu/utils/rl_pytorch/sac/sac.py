@@ -88,7 +88,7 @@ class SAC:
         self.q2_optimizer = optim.Adam(self.actor_critic.q2_net.parameters(), lr=q_lr)
         self.policy_optimizer = optim.Adam(self.actor_critic.policy_net.parameters(), lr=policy_lr)
 
-        self.buffer = ReplayBeffer(50000)
+        self.buffer = ReplayBeffer(10000)
         # hyperparameters
         self.gamma = gamma
         self.tau = 0.01
@@ -133,18 +133,19 @@ class SAC:
         else:
             Return = []
             action_range = torch.Tensor([self.action_space.low, self.action_space.high]).to('cuda:0')
+            states = current_obs
 
             for it in range(self.current_learning_iteration, num_learning_iterations):
                 score = 0
+                current_obs = self.vec_env.reset()
                 # Rollout
                 for _ in range(500):
                     if self.apply_reset:
                         current_obs = self.vec_env.reset()
                         current_states = self.vec_env.get_state()
                     # Compute the action
-                    states = current_obs
 
-                    actions = self.actor_critic.act(current_obs)
+                    actions = self.actor_critic.act(states)
                     action_in =  actions * (action_range[1] - action_range[0]) / 2.0 +  (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
                     next_states, reward, done, _ = self.vec_env.step(action_in)
@@ -158,7 +159,7 @@ class SAC:
                     if self.buffer.buffer_len() > 500:
                         self.update(self.batch_size)
 
-                print("episode:{}, buffer_capacity:{}".format(it, self.buffer.buffer_len()))
+                print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
                 Return.append(score)
                 score = 0
@@ -174,12 +175,13 @@ class SAC:
         new_q2_value = self.actor_critic.q2_net(state, new_action)
         next_value = torch.min(new_q1_value, new_q2_value) - log_prob
         value_loss = F.mse_loss(value, next_value.detach())
-
-        # Soft q  loss
+        # Soft Q loss
         q1_value = self.actor_critic.q1_net(state, action)
         q2_value = self.actor_critic.q2_net(state, action)
         target_value = self.actor_critic.target_value_net(next_state)
-        target_q_value = reward + done * self.gamma * target_value
+        target_q_value = reward + (1 - done) * self.gamma * target_value
+        # target_q_value = reward + self.gamma * target_value
+
         q1_value_loss = F.mse_loss(q1_value, target_q_value.detach())
         q2_value_loss = F.mse_loss(q2_value, target_q_value.detach())
 

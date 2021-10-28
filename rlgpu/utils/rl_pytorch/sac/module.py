@@ -1,3 +1,4 @@
+from isaacgym.gymutil import AxesGeometry
 import numpy as np
 
 import torch
@@ -54,6 +55,7 @@ class ActorCritic(nn.Module):
         z = noise.sample()
         action = torch.tanh(mean + std * z.cuda())
         log_prob = normal.log_prob(mean + std * z.cuda()) - torch.log(1 - action.pow(2) + epsilon)
+        log_prob = torch.mean(log_prob, dim=1, keepdim=True)
 
         return action, log_prob
 
