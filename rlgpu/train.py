@@ -13,19 +13,21 @@ import random
 from utils.config import set_np_formatting, set_seed, get_args, parse_sim_params, load_cfg
 from utils.parse_task import parse_task
 from utils.process_ppo import process_ppo
+from utils.process_sac import process_sac
 
 import torch
 
 
 def train():
     task, env = parse_task(args, cfg, cfg_train, sim_params)
-    ppo = process_ppo(args, env, cfg_train, logdir)
+    # rl_algorithm = process_ppo(args, env, cfg_train, logdir)
+    rl_algorithm = process_sac(args, env, cfg_train, logdir)
 
-    ppo_iterations = cfg_train["learn"]["max_iterations"]
+    rl_algorithm_iterations = cfg_train["learn"]["max_iterations"]
     if args.max_iterations > 0:
-        ppo_iterations = args.max_iterations
+        rl_algorithm_iterations = args.max_iterations
 
-    ppo.run(num_learning_iterations=ppo_iterations, log_interval=cfg_train["learn"]["save_interval"])
+    rl_algorithm.run(num_learning_iterations=rl_algorithm_iterations, log_interval=cfg_train["learn"]["save_interval"])
 
 
 if __name__ == '__main__':

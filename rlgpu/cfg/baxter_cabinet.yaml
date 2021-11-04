@@ -1,6 +1,6 @@
 # if given, will override the device setting in gym. 
 env:
-  numEnvs: 100
+  numEnvs: 50
   envSpacing: 1.5
   episodeLength: 500
   enableDebugVis: False
@@ -11,7 +11,7 @@ env:
   numProps: 9
   aggregateMode: 3
 
-  actionScale: 7.5
+  actionScale: 2.5
   dofVelocityScale: 0.1
   distRewardScale: 1.5
   rotRewardScale: 0

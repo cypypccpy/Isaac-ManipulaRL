@@ -1,3 +1,4 @@
+from math import log
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,9 +16,6 @@ class ValueNet(nn.Module):
         self.linear2 = nn.Linear(128, 64)
         self.linear3 = nn.Linear(64, 1)
 
-        self.linear3.weight.data.uniform_(-edge, edge)
-        self.linear3.bias.data.uniform_(-edge, edge)
-
     def forward(self, state):
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
@@ -33,9 +31,6 @@ class SoftQNet(nn.Module):
         self.linear1 = nn.Linear(state_dim + action_dim, 128)
         self.linear2 = nn.Linear(128, 64)
         self.linear3 = nn.Linear(64, 1)
-
-        self.linear3.weight.data.uniform_(-edge, edge)
-        self.linear3.bias.data.uniform_(-edge, edge)
 
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
@@ -55,14 +50,11 @@ class PolicyNet(nn.Module):
 
         self.linear1 = nn.Linear(state_dim, 128)
         self.linear2 = nn.Linear(128, 64)
+        self.bn1 = nn.BatchNorm1d(state_dim)
 
         self.mean_linear = nn.Linear(64, action_dim)
-        self.mean_linear.weight.data.uniform_(-edge, edge)
-        self.mean_linear.bias.data.uniform_(-edge, edge)
 
         self.log_std_linear = nn.Linear(64, action_dim)
-        self.log_std_linear.weight.data.uniform_(-edge, edge)
-        self.log_std_linear.bias.data.uniform_(-edge, edge)
 
     def forward(self, state):
         x = F.relu(self.linear1(state))
@@ -71,7 +63,6 @@ class PolicyNet(nn.Module):
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
-
         return mean, log_std
 
 

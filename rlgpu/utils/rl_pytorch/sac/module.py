@@ -24,6 +24,8 @@ class ActorCritic(nn.Module):
         self.q1_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
         self.q2_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
         self.policy_net = PolicyNet(obs_shape[0], actions_shape[0]).cuda()
+        self.target_q1_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
+        self.target_q2_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
 
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
@@ -55,7 +57,7 @@ class ActorCritic(nn.Module):
         z = noise.sample()
         action = torch.tanh(mean + std * z.cuda())
         log_prob = normal.log_prob(mean + std * z.cuda()) - torch.log(1 - action.pow(2) + epsilon)
-        log_prob = torch.mean(log_prob, dim=1, keepdim=True)
+        log_prob = torch.sum(log_prob, dim=1, keepdim=True)
 
         return action, log_prob
 

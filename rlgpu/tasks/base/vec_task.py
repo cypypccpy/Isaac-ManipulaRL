@@ -123,6 +123,10 @@ class VecTaskPython(VecTask):
     def get_state(self):
         return torch.clamp(self.task.states_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
 
+    def get_reverse_actions(self):
+        return self.task.reverse_actions.to(self.rl_device)
+        # return torch.clamp(self.task.reverse_actions.to(self.rl_device), -self.clip_actions, self.clip_actions)
+
     def step(self, actions):
         actions_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
 

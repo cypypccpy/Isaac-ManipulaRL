@@ -8,8 +8,8 @@ import torch
 class Demostration():
     def __init__(self, recorder_path) -> None:
         self.dof_pos_recorder = np.loadtxt(recorder_path)
-        self.dof_pos=torch.from_numpy(self.dof_pos_recorder[:19, :])
-        self.gripper_flag = torch.from_numpy(self.dof_pos_recorder[19:, :])
+        self.dof_pos=torch.from_numpy(self.dof_pos_recorder[:, :])
+        self.gripper_flag = torch.from_numpy(self.dof_pos_recorder[19:20, :])
         self.step_size = self.dof_pos.shape[1]
         
         self.gripper_init()
@@ -22,6 +22,10 @@ class Demostration():
             if self.gripper_flag[0, i] == 1:
                 self.dof_pos[17, i] = 0.02
                 self.dof_pos[18, i] = -0.02
+
+        self.dof_pos1 = self.dof_pos[0:19, :]
+        self.dof_pos2 = self.dof_pos[19+1:, :]
+        self.dof_pos = torch.cat((self.dof_pos1, self.dof_pos2),dim=0)
 
     def get_dof_pos(self, step):
         if step < self.dof_pos.shape[1]:

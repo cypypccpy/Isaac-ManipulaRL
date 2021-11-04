@@ -1,7 +1,7 @@
 seed: -1
 
 clip_observations: 5.0
-clip_actions: 1.0
+clip_actions: 3.14
 
 policy: # only works for MlpPolicy right now
   pi_hid_sizes: [128, 64, 32]
@@ -15,7 +15,7 @@ learn:
   print_log: True
 
   # rollout params
-  max_iterations: 5000
+  max_iterations: 50000
 
   # training params
   cliprange: 0.2

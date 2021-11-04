@@ -11,11 +11,19 @@ import matplotlib.pyplot as plt
 from torch.distributions import Normal
 
 class ReplayBeffer():
-    def __init__(self, buffer_maxlen):
+    def __init__(self, buffer_maxlen, demonstration_buffer_maxlen):
         self.buffer = collections.deque(maxlen=buffer_maxlen)
-
+        self.demonstration_buffer = collections.deque(maxlen=demonstration_buffer_maxlen)
+        self.learning_buffer = []
+        self.demonstration_buffer_maxlen = demonstration_buffer_maxlen
+    
     def push(self, data):
-        self.buffer.append(data)
+        self.learning_buffer.append(data)
+
+    def push_demonstration_data(self, data, iter):
+        for i in range(iter):
+            self.demonstration_buffer.append(data)
+
 
     def sample(self, batch_size):
         state_list = torch.FloatTensor([])
@@ -23,7 +31,10 @@ class ReplayBeffer():
         reward_list = torch.FloatTensor([])
         next_state_list = torch.FloatTensor([])
         done_list = torch.FloatTensor([])
-        list = []
+        
+        self.buffer = []
+        self.buffer.extend(self.demonstration_buffer)
+        self.buffer.extend(self.learning_buffer)
         batch = random.sample(self.buffer, batch_size)
         for experience in batch:
             s, a, r, n_s, d = experience
@@ -48,4 +59,7 @@ class ReplayBeffer():
                done_list.unsqueeze(-1)
 
     def buffer_len(self):
+        self.buffer = []
+        self.buffer.extend(self.demonstration_buffer)
+        self.buffer.extend(self.learning_buffer)
         return len(self.buffer)
