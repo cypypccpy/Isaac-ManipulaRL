@@ -1,12 +1,12 @@
 seed: -1
 
 clip_observations: 5.0
-clip_actions: 3.14
+clip_actions: 1.0
 
 policy: # only works for MlpPolicy right now
-  pi_hid_sizes: [128, 64, 32]
-  vf_hid_sizes: [125, 64, 32]
-  activation: selu # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+  pi_hid_sizes: [256, 128, 64]
+  vf_hid_sizes: [256, 128, 64]
+  activation: relu # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 learn:
   agent_name: mynewtask_ppo
   test: False
@@ -19,8 +19,8 @@ learn:
 
   # training params
   cliprange: 0.2
-  ent_coef: 0
-  nsteps: 32
+  ent_coef: 0.01
+  nsteps: 64
   noptepochs: 20
   nminibatches: 4 # this is per agent
   max_grad_norm: 1

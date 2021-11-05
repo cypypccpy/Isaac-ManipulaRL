@@ -3,7 +3,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import MultivariateNormal
+from torchvision.models import squeezenet
+from utils.rl_pytorch.ppo.resmlp import ResMLP
+from utils.rl_pytorch.ppo.mynetwork import MyNetWork
 
+from einops import rearrange
+from einops.layers.torch import Rearrange, Reduce
 
 class ActorCritic(nn.Module):
 
@@ -12,60 +17,12 @@ class ActorCritic(nn.Module):
 
         self.asymmetric = asymmetric
 
-        if model_cfg is None:
-            actor_hidden_dim = [256, 256, 256]
-            critic_hidden_dim = [256, 256, 256]
-            activation = get_activation("selu")
-        else:
-            actor_hidden_dim = model_cfg['pi_hid_sizes']
-            critic_hidden_dim = model_cfg['vf_hid_sizes']
-            activation = get_activation(model_cfg['activation'])
+        self.actor = MyNetWork(output=actions_shape[0])
 
-        # Policy
-        actor_layers = []
-        actor_layers.append(nn.Linear(*obs_shape, actor_hidden_dim[0]))
-        actor_layers.append(activation)
-        for l in range(len(actor_hidden_dim)):
-            if l == len(actor_hidden_dim) - 1:
-                actor_layers.append(nn.Linear(actor_hidden_dim[l], *actions_shape))
-            else:
-                actor_layers.append(nn.Linear(actor_hidden_dim[l], actor_hidden_dim[l + 1]))
-                actor_layers.append(activation)
-        self.actor = nn.Sequential(*actor_layers)
-
-        # Value function
-        critic_layers = []
-        if self.asymmetric:
-            critic_layers.append(nn.Linear(*states_shape, critic_hidden_dim[0]))
-        else:
-            critic_layers.append(nn.Linear(*obs_shape, critic_hidden_dim[0]))
-        critic_layers.append(activation)
-        for l in range(len(critic_hidden_dim)):
-            if l == len(critic_hidden_dim) - 1:
-                critic_layers.append(nn.Linear(critic_hidden_dim[l], 1))
-            else:
-                critic_layers.append(nn.Linear(critic_hidden_dim[l], critic_hidden_dim[l + 1]))
-                critic_layers.append(activation)
-        self.critic = nn.Sequential(*critic_layers)
-
-        print(self.actor)
-        print(self.critic)
+        self.critic = MyNetWork(output=1)
 
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
-
-        # Initialize the weights like in stable baselines
-        actor_weights = [np.sqrt(2)] * len(actor_hidden_dim)
-        actor_weights.append(0.01)
-        critic_weights = [np.sqrt(2)] * len(critic_hidden_dim)
-        critic_weights.append(1.0)
-        # self.init_weights(self.actor, actor_weights)
-        # self.init_weights(self.critic, critic_weights)
-
-    @staticmethod
-    def init_weights(sequential, scales):
-        [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
-         enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
 
     def forward(self):
         raise NotImplementedError
@@ -83,6 +40,9 @@ class ActorCritic(nn.Module):
             value = self.critic(states)
         else:
             value = self.critic(observations)
+
+        self.log_actions_mean = actions_mean
+        self.log_value = value
 
         return actions.detach(), actions_log_prob.detach(), value.detach(), actions_mean.detach(), self.log_std.repeat(actions_mean.shape[0], 1).detach()
 

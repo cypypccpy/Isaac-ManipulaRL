@@ -7,7 +7,7 @@ from std_msgs.msg import Header
 def joint_states_server(joint_position):
     pub = rospy.Publisher('joint_states', JointState, queue_size=10)
     rospy.init_node('joint_state_publisher')
-    rate = rospy.Rate(10) # 10hz
+    rate = rospy.Rate(20) # 10hz
     joint_states = JointState()
     joint_states.header = Header()
     joint_states.header.stamp = rospy.Time.now()

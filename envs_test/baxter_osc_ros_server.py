@@ -325,7 +325,7 @@ while not gym.query_viewer_has_closed(viewer):
 
     joint_position = dof_pos[0, 10:17, 0].detach().numpy().tolist()
 
-    # joint_states_server(joint_position)
+    joint_states_server(joint_position)
     # Get current hand poses
     pos_cur = rb_states[hand_idxs, :3]
     orn_cur = rb_states[hand_idxs, 3:7]
@@ -365,11 +365,9 @@ while not gym.query_viewer_has_closed(viewer):
     pos_target = torch.cat((pos_target[:, :17, :], gripper_cabinet_dof), dim = 1)
 
     # Set tensor action
-    if gripper_executed == True and itr % 1 == 0:
-        gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
+    # if gripper_executed == True and itr % 1 == 0:
+    #     gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
 
-    print(torch.abs(dpose).sum())
-    print(pose_index)
     if torch.abs(dpose).sum() < 0.01:
         if pose_index == 1:
             #gripper_executed = open_close_gripper(envs[0], 1)
@@ -393,8 +391,6 @@ while not gym.query_viewer_has_closed(viewer):
 
 print("Done")
 print(dof_pos_np.shape)
-dof_pos_recorder = np.array(dof_pos_np)
-np.savetxt('npresult1.txt', dof_pos_recorder)
 
 gym.destroy_viewer(viewer)
 gym.destroy_sim(sim)
