@@ -2,7 +2,7 @@
 env:
   numEnvs: 100
   envSpacing: 1.5
-  episodeLength: 500
+  episodeLength: 1000
   enableDebugVis: False
 
   startPositionNoise: 0.0
@@ -18,7 +18,7 @@ env:
   aroundHandleRewardScale: 1.0
   openRewardScale: 4.0
   fingerDistRewardScale: 10.0
-  actionPenaltyScale: 0.01
+  actionPenaltyScale: 0.0
 
   asset:
     assetRoot: "../../assets"
