@@ -511,11 +511,20 @@ class BaxterCabinet(BaseTask):
         else:
             self.actions = actions.clone().to(self.device)
 
-            targets = (self.actions + 1.0) / 2.0 * (self.baxter_dof_upper_limits[self.baxter_begin_dof:] - self.baxter_dof_lower_limits[self.baxter_begin_dof:]) + self.baxter_dof_lower_limits[self.baxter_begin_dof:]
-
-            # targets = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] + self.baxter_dof_speed_scales[self.baxter_begin_dof:] * self.dt * self.actions * self.action_scale
+            targets = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] + self.baxter_dof_speed_scales[self.baxter_begin_dof:] * self.dt * self.actions * self.action_scale
             self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] = tensor_clamp(
                 targets, self.baxter_dof_lower_limits[self.baxter_begin_dof:], self.baxter_dof_upper_limits[self.baxter_begin_dof:])
+            
+            for i in range(self.num_envs):
+                if self.actions[i, 7] > 0.0:
+                    self.baxter_dof_targets[i, 17] = 0.02
+                else:
+                    self.baxter_dof_targets[i, 17] = 0.0
+
+                if self.actions[i, 8] > 0.0:
+                    self.baxter_dof_targets[i, 18] = -0.02
+                else:
+                    self.baxter_dof_targets[i, 18] = 0.0
             
             env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
             self.gym.set_dof_position_target_tensor(self.sim,
@@ -640,6 +649,7 @@ def compute_baxter_reward(
 
     # regularization on the actions (summed for each environment)
     action_penalty = torch.sum(actions ** 2, dim=-1)
+
 
     # how far the cabinet has been opened out
     open_reward = cabinet_dof_pos[:, 3]  # drawer_top_joint

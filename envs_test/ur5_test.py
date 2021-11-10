@@ -102,7 +102,7 @@ if viewer is None:
     quit()
 
 # load assets
-asset_root = "/home/hp-3070/下载/IsaacGym_Preview_2_Package/isaacgym/assets"
+asset_root = "../assets"
 
 table_dims = gymapi.Vec3(0.6, 0.2, 1.0)
 base_dims = gymapi.Vec3(0.2, 0.2, 0.2)
@@ -155,14 +155,14 @@ object_assets.append(gym.load_asset(sim, asset_root, brick_asset_file, asset_opt
 spawn_height = gymapi.Vec3(0.0, 0.3, 0.0)
 
 # load bin asset
-bin_asset_file = "urdf/tray/traybox.urdf"
+bin_asset_file = "robot_package/base/urdf/base.urdf"
 
 print("Loading asset '%s' from '%s'" % (bin_asset_file, asset_root))
 bin_asset = gym.load_asset(sim, asset_root, bin_asset_file, asset_options)
 
 corner = table_pose.p - table_dims * 0.5
 
-asset_root = "/home/hp-3070/下载/IsaacGym_Preview_2_Package/isaacgym/assets"
+asset_root = "../assets"
 ur10_asset_file = "ur_robotics/ur5_gripper/ur5_gripper.urdf"
 
 asset_options.fix_base_link = True

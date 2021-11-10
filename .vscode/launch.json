@@ -11,7 +11,7 @@
             "program": "/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/rlgpu/train.py",
             "console": "integratedTerminal",
             "cwd": "/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test",
-            "args": [],
+            "args": ["--sim_device cpu"],
             "justMyCode": false
         }
     ]

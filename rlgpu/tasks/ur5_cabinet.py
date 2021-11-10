@@ -59,7 +59,7 @@ class UR5Cabinet(BaseTask):
         self.prop_length = 0.08
         self.prop_spacing = 0.09
 
-        self.num_obs = 49164
+        self.num_obs = 29
         self.num_acts = 12
 
         self.cfg["env"]["numObservations"] = self.num_obs
@@ -132,7 +132,7 @@ class UR5Cabinet(BaseTask):
         upper = gymapi.Vec3(spacing, spacing, spacing)
 
         asset_root = "../assets"
-        ur5_asset_file = "ur_robotics/ur5_gripper/ur5_gripper.urdf"
+        ur5_asset_file = "ur_robotics/ur5_gripper/ur5_gripper_origin.urdf"
         cabinet_asset_file = "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
 
         # if "asset" in self.cfg["env"]:
@@ -392,31 +392,31 @@ class UR5Cabinet(BaseTask):
 
         to_target = self.drawer_grasp_pos - self.ur5_grasp_pos
         # num: 12 + 12 + 3 + 1 + 1
-        # self.obs_buf = torch.cat((dof_pos_scaled, self.ur5_dof_vel * self.dof_vel_scale, to_target,
-        #                           self.cabinet_dof_pos[:, 3].unsqueeze(-1), self.cabinet_dof_vel[:, 3].unsqueeze(-1)), dim=-1)
+        self.obs_buf = torch.cat((dof_pos_scaled, self.ur5_dof_vel * self.dof_vel_scale, to_target,
+                                  self.cabinet_dof_pos[:, 3].unsqueeze(-1), self.cabinet_dof_vel[:, 3].unsqueeze(-1)), dim=-1)
         #visual input
-        camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
-        torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
-        torch_camera_tensor = to_torch(torch_camera_tensor, dtype=torch.float, device=self.device).unsqueeze(0)
+        # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
+        # torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
+        # torch_camera_tensor = to_torch(torch_camera_tensor, dtype=torch.float, device=self.device).unsqueeze(0)
 
-        self.img_buf = torch_camera_tensor
-        for i in range(1, self.num_envs):
-            camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_COLOR)
-            torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
-            torch_camera_tensor = to_torch(torch_camera_tensor, dtype=torch.float, device=self.device).unsqueeze(0)
-            self.img_buf = torch.cat((self.img_buf, torch_camera_tensor), dim=0)
+        # self.img_buf = torch_camera_tensor
+        # for i in range(1, self.num_envs):
+        #     camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_COLOR)
+        #     torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
+        #     torch_camera_tensor = to_torch(torch_camera_tensor, dtype=torch.float, device=self.device).unsqueeze(0)
+        #     self.img_buf = torch.cat((self.img_buf, torch_camera_tensor), dim=0)
 
-        self.img_buf = self.img_buf[:, :, :, :3]
-        #image scale and normalize
-        image_mean = [0.485, 0.456, 0.406]
-        image_std = [0.229, 0.224, 0.225]
-        self.img_buf = self.img_buf / 255
-        for c in range(3):
-            self.img_buf[:, :, c] = (self.img_buf[:, :, c] - image_mean[c])/image_std[c]
+        # self.img_buf = self.img_buf[:, :, :, :3]
+        # #image scale and normalize
+        # image_mean = [0.485, 0.456, 0.406]
+        # image_std = [0.229, 0.224, 0.225]
+        # self.img_buf = self.img_buf / 255
+        # for c in range(3):
+        #     self.img_buf[:, :, c] = (self.img_buf[:, :, c] - image_mean[c])/image_std[c]
 
-        # add aux obs
-        self.img_buf = rearrange(self.img_buf, 'b h w c -> b (h w c)')
-        self.obs_buf = torch.cat((self.img_buf, dof_pos_scaled), dim=1)
+        # # add aux obs
+        # self.img_buf = rearrange(self.img_buf, 'b h w c -> b (h w c)')
+        # self.obs_buf = torch.cat((self.img_buf, dof_pos_scaled), dim=1)
 
         return self.obs_buf
 
@@ -561,6 +561,7 @@ def compute_ur5_reward(
     dot2 = torch.bmm(axis3.view(num_envs, 1, 3), axis4.view(num_envs, 3, 1)).squeeze(-1).squeeze(-1)  # alignment of up axis for gripper
     # reward for matching the orientation of the hand to the drawer (fingers wrapped)
     rot_reward = 0.5 * (torch.sign(dot1) * dot1 ** 2 + torch.sign(dot2) * dot2 ** 2)
+    print(dot1[:])
 
     # bonus if left finger is above the drawer handle and right below
     around_handle_reward = torch.zeros_like(rot_reward)

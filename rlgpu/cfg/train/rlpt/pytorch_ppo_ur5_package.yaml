@@ -10,19 +10,19 @@ policy: # only works for MlpPolicy right now
 learn:
   agent_name: mynewtask_ppo
   test: False
-  resume: 0
-  save_interval: 100 # check for potential saves every this many iterations
+  resume: 300
+  save_interval: 10 # check for potential saves every this many iterations
   print_log: True
 
   # rollout params
-  max_iterations: 50000
+  max_iterations: 10000
 
   # training params
   cliprange: 0.2
-  ent_coef: 0.01
-  nsteps: 128
-  noptepochs: 48
-  nminibatches: 16 # this is per agent
+  ent_coef: 0.0
+  nsteps: 32
+  noptepochs: 20
+  nminibatches: 4 # this is per agent
   max_grad_norm: 1
   optim_stepsize: 3.e-4 # 3e-4 is default for single agent training with constant schedule
   schedule: fixed # could be adaptive or linear or fixed

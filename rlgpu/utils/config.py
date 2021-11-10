@@ -71,8 +71,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "franka_cabinet"), "cfg/train/rlg/rlg_franka_cabinet.yaml", "cfg/franka_cabinet.yaml"
         elif args.task == "UR5Cabinet":
             return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlg/rlg_ur5_cabinet.yaml", "cfg/ur5_cabinet.yaml"
-        elif args.task == "Quadcopter":
-            return os.path.join(args.logdir, "quadcopter"), "cfg/train/rlg/rlg_quadcopter.yaml", "cfg/quadcopter.yaml"
+        elif args.task == "UR5Package":
+            return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlg/rlg_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "Anymal":
             return os.path.join(args.logdir, "anymal"), "cfg/train/rlg/rlg_anymal.yaml", "cfg/anymal.yaml"
         elif args.task == "ShadowHand":
@@ -115,8 +115,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "franka_cabinet"), "cfg/train/rlpt/pytorch_ppo_franka_cabinet.yaml", "cfg/franka_cabinet.yaml"
         elif args.task == "UR5Cabinet":
             return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlpt/pytorch_ppo_ur5_cabinet.yaml", "cfg/ur5_cabinet.yaml"
-        elif args.task == "Quadcopter":
-            return os.path.join(args.logdir, "quadcopter"), "cfg/train/rlpt/pytorch_ppo_quadcopter.yaml", "cfg/quadcopter.yaml"
+        elif args.task == "UR5Package":
+            return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlpt/pytorch_ppo_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "Anymal":
             return os.path.join(args.logdir, "anymal"), "cfg/train/rlpt/pytorch_ppo_anymal.yaml", "cfg/anymal.yaml"
         elif args.task == "ShadowHand":
@@ -273,7 +273,7 @@ def get_args(benchmark=False, use_rlg_config=False):
             "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False,
             "help": "Use horovod for multi-gpu training, have effect only with rl_games RL library"},
-        {"name": "--task", "type": str, "default": "BaxterCabinet",
+        {"name": "--task", "type": str, "default": "UR5Package",
             "help": "Can be BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, Ingenuity"},
         {"name": "--task_type", "type": str,
             "default": "Python", "help": "Choose Python or C++"},
