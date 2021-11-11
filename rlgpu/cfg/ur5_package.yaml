@@ -2,7 +2,7 @@
 env:
   numEnvs: 200
   envSpacing: 1.5
-  episodeLength: 100
+  episodeLength: 250
   enableDebugVis: False
 
   startPositionNoise: 0.0
@@ -11,14 +11,14 @@ env:
   numProps: 0
   aggregateMode: 0
 
-  actionScale: 2.5
+  actionScale: 1
   dofVelocityScale: 0.1
-  distRewardScale: 2.5
+  distRewardScale: 1.0
   rotRewardScale: 0.0
   aroundHandleRewardScale: 0
   openRewardScale: 0
   fingerDistRewardScale: 0
-  actionPenaltyScale: 0.001
+  actionPenaltyScale: 0.01
 
   asset:
     assetRoot: "../../assets"
