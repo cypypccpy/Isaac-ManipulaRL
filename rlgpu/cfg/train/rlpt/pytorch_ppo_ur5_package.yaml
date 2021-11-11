@@ -10,12 +10,12 @@ policy: # only works for MlpPolicy right now
 learn:
   agent_name: mynewtask_ppo
   test: False
-  resume: 300
+  resume: 0
   save_interval: 10 # check for potential saves every this many iterations
   print_log: True
 
   # rollout params
-  max_iterations: 10000
+  max_iterations: 1000
 
   # training params
   cliprange: 0.2

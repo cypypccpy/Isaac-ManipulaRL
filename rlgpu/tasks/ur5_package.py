@@ -103,8 +103,8 @@ class UR5Package(BaseTask):
 
     def create_sim(self):
         self.sim_params.physx.solver_type = 1
-        self.sim_params.physx.num_position_iterations = 25
-        self.sim_params.physx.num_velocity_iterations = 0
+        self.sim_params.physx.num_position_iterations = 150
+        self.sim_params.physx.num_velocity_iterations = 25
         self.sim_params.up_axis = gymapi.UP_AXIS_Z
         self.sim_params.gravity.x = 0
         self.sim_params.gravity.y = 0
@@ -135,29 +135,40 @@ class UR5Package(BaseTask):
         asset_options.fix_base_link = True
         asset_options.collapse_fixed_joints = True
         asset_options.disable_gravity = True
-        asset_options.thickness = 0.0001
+        asset_options.thickness = 0.001
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
+        asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
         asset_options.use_mesh_materials = True
+        asset_options.override_com = True
+        asset_options.override_inertia = True
+        asset_options.vhacd_enabled = True
+        asset_options.vhacd_params = gymapi.VhacdParams()
+        asset_options.vhacd_params.resolution = 500000
         ur5_asset = self.gym.load_asset(self.sim, asset_root, ur5_asset_file, asset_options)
 
         # load base asset
         asset_options = gymapi.AssetOptions()
-        asset_options.armature = 0.001
-        asset_options.thickness = 0.002
+        asset_options.collapse_fixed_joints = True
+        asset_options.thickness = 0.001
         asset_options.fix_base_link = True
+        asset_options.use_mesh_materials = True
         asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
         asset_options.use_mesh_materials = True
+        asset_options.override_com = True
+        asset_options.override_inertia = True
+        asset_options.vhacd_enabled = True
+        asset_options.vhacd_params = gymapi.VhacdParams()
+        asset_options.vhacd_params.resolution = 5000000
         base_asset = self.gym.load_asset(self.sim, asset_root, base_asset_file, asset_options)
 
         # load shaft asset
         asset_options = gymapi.AssetOptions()
-        asset_options.armature = 0.001
-        asset_options.thickness = 0.002
+        asset_options.thickness = 0.001
         asset_options.fix_base_link = False
         asset_options.disable_gravity = True
-        asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
-        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
         asset_options.use_mesh_materials = True
+        asset_options.density = 10000
         shaft_asset = self.gym.load_asset(self.sim, asset_root, shaft_asset_file, asset_options)
 
         table_dims = gymapi.Vec3(0.2, 0.2, 0.05)
@@ -165,6 +176,7 @@ class UR5Package(BaseTask):
         table_pose.p = gymapi.Vec3(0, 0, 0.025)
 
         asset_options.fix_base_link = True
+        asset_options.thickness = 0.0001
         table_asset = self.gym.create_box(self.sim, table_dims.x, table_dims.y, table_dims.z, asset_options)
 
         ur5_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 1.0e4], dtype=torch.float, device=self.device)
@@ -212,6 +224,7 @@ class UR5Package(BaseTask):
 
         base_start_pose = gymapi.Transform()
         base_start_pose.p = gymapi.Vec3(*get_axis_params(table_dims.z, self.up_axis_idx))
+        base_start_pose.r = gymapi.Quat.from_euler_zyx(0, 0, 0)
 
         # compute aggregate size
         num_ur5_bodies = self.gym.get_asset_rigid_body_count(ur5_asset)
@@ -241,18 +254,17 @@ class UR5Package(BaseTask):
             if self.aggregate_mode >= 3:
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
-            ur5_actor = self.gym.create_actor(env_ptr, ur5_asset, ur5_start_pose, "ur5", i, 0, 0)
+            ur5_actor = self.gym.create_actor(env_ptr, ur5_asset, ur5_start_pose, "ur5", 0, 0, 0)
             self.gym.set_actor_dof_properties(env_ptr, ur5_actor, ur5_dof_props)
 
             if self.aggregate_mode == 2:
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             base_pose = base_start_pose
-            base_actor = self.gym.create_actor(env_ptr, base_asset, base_pose, "base", i, 0, 0)
+            base_actor = self.gym.create_actor(env_ptr, base_asset, base_pose, "base", 0, 0, 0)
             self.gym.set_rigid_body_color(env_ptr, base_actor, 0, gymapi.MESH_VISUAL_AND_COLLISION, gymapi.Vec3(0.24, 0.35, 0.8))
 
-            table_actor = self.gym.create_actor(env_ptr, table_asset, table_pose, "table", i, 0, 0)
-
+            table_actor = self.gym.create_actor(env_ptr, table_asset, table_pose, "table", 0, 0, 0)
 
             if self.aggregate_mode == 1:
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
@@ -318,7 +330,7 @@ class UR5Package(BaseTask):
     def compute_reward(self, actions):
         self.rew_buf[:], self.reset_buf[:] = compute_ur5_reward(
             self.reset_buf, self.progress_buf, self.actions,
-            self.ur5_grasp_pos, self.ur5_grasp_rot,
+            self.ur5_grasp_pos, self.base_pos,
             self.shaft_tail[:, 0:3], self.base_entry[:, 0:3],
             self.shaft_tail_euler_angle, self.base_entry[:, 3:7],
             self.num_envs, self.dist_reward_scale, self.rot_reward_scale, self.around_handle_reward_scale, self.open_reward_scale,
@@ -340,6 +352,7 @@ class UR5Package(BaseTask):
         self.ur5_rfinger_pos = self.rigid_body_states[:, self.rfinger_handle][:, 0:3]
         self.ur5_lfinger_rot = self.rigid_body_states[:, self.lfinger_handle][:, 3:7]
         self.ur5_rfinger_rot = self.rigid_body_states[:, self.rfinger_handle][:, 3:7]
+        self.base_pos = self.rigid_body_states[:, self.base_handle][:, 0:3]
 
         self.lfinger_inner_knuckle_pos = self.rigid_body_states[:, self.lfinger_inner_knuckle_handle][:, 0:3]
         self.rfinger_inner_knuckle_pos = self.rigid_body_states[:, self.rfinger_inner_knuckle_handle][:, 0:3]
@@ -355,9 +368,9 @@ class UR5Package(BaseTask):
 
         self.shaft_tail = self.rigid_body_states[:, self.hand_handle].clone()
         for i in range(self.num_envs):
-            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([1, 0, 0], device=self.device) * -0.001)
-            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 1, 0], device=self.device) * 0.225)
-            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 0, 1], device=self.device) * 0.1)
+            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([1, 0, 0], device=self.device) * 0.03)
+            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 1, 0], device=self.device) * 0.26)
+            self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 0, 1], device=self.device) * 0.16)
 
         to_target = self.shaft_tail[:, 0:3] - self.base_entry[:, 0:3]
 
@@ -374,9 +387,8 @@ class UR5Package(BaseTask):
                           / (self.ur5_dof_upper_limits - self.ur5_dof_lower_limits) - 1.0)
 
         # num: 12 + 12 + 3 + 1 + 1
-        hand_pos = hand_pos - to_torch([0.2075, -0.1989, 0.4304], dtype=torch.float, device=self.device)
-
-        self.obs_buf = torch.cat((hand_pos, hand_linear_vel,
+        # hand_pos = hand_pos - to_torch([0.2075, -0.1989, 0.4304], dtype=torch.float, device=self.device)
+        self.obs_buf = torch.cat((self.shaft_tail[:, 0:3], hand_linear_vel,
                                     to_target), dim=-1)
 
         return self.obs_buf
@@ -395,6 +407,24 @@ class UR5Package(BaseTask):
         # reset base
 
         multi_env_ids_int32 = self.global_indices[env_ids, :2].flatten()
+        
+        # pos_err = torch.rand((self.num_envs, 3), device=self.device) * 4 - 2
+        # # pos_err[:, 2] = (self.actions[:, 2] - 1) / 0.5 * self.dt * self.action_scale
+
+        # orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
+
+        # dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
+
+        # # solve damped least squares
+        # j_eef_T = torch.transpose(self.j_eef, 1, 2)
+        # d = 0.05  # damping term
+        # lmbda = torch.eye(6).to('cpu') * (d ** 2)
+        # u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 6, 1)
+
+        # # update position targets
+        # self.ur5_dof_targets[:, :self.num_ur5_dofs] = self.ur5_dof_targets[:, :self.num_ur5_dofs] + u.squeeze(-1)
+
+
         self.gym.set_dof_position_target_tensor_indexed(self.sim,
                                                         gymtorch.unwrap_tensor(self.ur5_dof_targets),
                                                         gymtorch.unwrap_tensor(multi_env_ids_int32), len(multi_env_ids_int32))
@@ -411,26 +441,28 @@ class UR5Package(BaseTask):
         # self.actions = to_torch([0, 0, -1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
         
         # pos_cur = self.rigid_body_states[:, self.hand_handle][:, :3]
-        # orn_cur = self.rigid_body_states[:, self.hand_handle][:, 3:7]
+        orn_cur = self.rigid_body_states[:, self.hand_handle][:, 3:7]
 
-        # # from action's euler angle to quat
-        # orn_des_quat = torch.zeros_like(orn_cur)
-        # for i in range(self.num_envs):
-        #     orn_tem = gymapi.Quat.from_euler_zyx(0, 0, 0)
-        #     orn_des_quat[i, :] = to_torch([orn_tem.w, orn_tem.x, orn_tem.y, orn_tem.z], dtype=torch.float, device=self.device)
+        # from action's euler angle to quat
+        orn_des_quat = torch.zeros_like(orn_cur)
+        for i in range(self.num_envs):
+            orn_tem = gymapi.Quat.from_euler_zyx(0, 0, 0)
+            orn_des_quat[i, :] = to_torch([orn_tem.w, orn_tem.x, orn_tem.y, orn_tem.z], dtype=torch.float, device=self.device)
 
         # pos_des = self.actions[:, :3] * self.dt * self.action_scale + self.rigid_body_states[:, self.hand_handle][:, :3]
 
-        # # orn_des = orn_des_quat[:, :] * self.dt * self.action_scale + self.rigid_body_states[:, self.hand_handle][:, 3:7]
-        # # pos_des = self.rigid_body_states[:, self.hand_handle][:, :3]
-        # orn_des = orn_des_quat[:, :]
+        # orn_des = orn_des_quat[:, :] * self.dt * self.action_scale + self.rigid_body_states[:, self.hand_handle][:, 3:7]
+        # pos_des = self.rigid_body_states[:, self.hand_handle][:, :3]
+        orn_des = orn_des_quat[:, :]
 
-        # orn_cur /= torch.norm(orn_cur, dim=-1).unsqueeze(-1)
-        # orn_err = orientation_error(orn_des, orn_cur)
-        
+        orn_cur /= torch.norm(orn_cur, dim=-1).unsqueeze(-1)
+        self.orn_err = orientation_error(orn_des, orn_cur)
+
         # pos_err = (pos_des - pos_cur)
         # pos_err = to_torch([0, 0, -1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
         pos_err = self.actions[:, :3] * self.dt * self.action_scale
+        # pos_err[:, 2] = (self.actions[:, 2] - 1) / 0.5 * self.dt * self.action_scale
+
         orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
         dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
@@ -508,7 +540,7 @@ class UR5Package(BaseTask):
 @torch.jit.script
 def compute_ur5_reward(
     reset_buf, progress_buf, actions,
-    ur5_grasp_pos,  ur5_grasp_rot, 
+    ur5_grasp_pos,  base_pos, 
     shaft_tail_pos, base_entry_pos,
     shaft_tail_euler_angle,  base_entry_rot,
     num_envs, dist_reward_scale, rot_reward_scale, around_handle_reward_scale, open_reward_scale,
@@ -518,38 +550,42 @@ def compute_ur5_reward(
 
     # distance from hand to the drawer
     d = torch.norm(shaft_tail_pos - base_entry_pos, p=2, dim=-1)
-    dist_reward = 1.0 / (1.0 + d ** 2)
-
-    dist_reward = torch.where(d <= 0.02, dist_reward * 2, dist_reward)
+    dist_reward = 1 - d
 
     plane_dist_reward = torch.zeros_like(dist_reward)
     plane_dist_reward = torch.where(shaft_tail_pos[:, 2] < base_entry_pos[:, 2],
-                            torch.where(abs(shaft_tail_pos[:, 0]) < 0.016,
-                                torch.where(abs(shaft_tail_pos[:, 1]) < 0.016,
+                            torch.where(abs(shaft_tail_pos[:, 0]) < 0.015,
+                                torch.where(abs(shaft_tail_pos[:, 1]) < 0.015,
                                     plane_dist_reward + base_entry_pos[:, 2] - shaft_tail_pos[:, 2], plane_dist_reward), plane_dist_reward), plane_dist_reward)
 
     rot_reward = - (abs(abs(shaft_tail_euler_angle[:, 1]) - 0.0) + abs(abs(shaft_tail_euler_angle[:, 2]) - 1.57))
     # regularization on the actions (summed for each environment)
     action_penalty = torch.sum(actions ** 2, dim=-1)
 
-    rewards = dist_reward_scale * dist_reward + plane_dist_reward * 20 + rot_reward * rot_reward_scale - action_penalty_scale * action_penalty
+    rewards = dist_reward_scale * dist_reward + plane_dist_reward * 40 + rot_reward * rot_reward_scale - action_penalty_scale * action_penalty
 
-    rewards = torch.where(abs(shaft_tail_pos[:, 0]) > 0.3,
-                          torch.ones_like(rewards) * -2, rewards)
+    rewards = torch.where(abs(shaft_tail_pos[:, 0]) > 0.2,
+                          torch.ones_like(rewards) * -1, rewards)
 
-    reset_buf = torch.where(abs(shaft_tail_pos[:, 0]) > 0.3,
+    reset_buf = torch.where(abs(shaft_tail_pos[:, 0]) > 0.2,
                             torch.ones_like(reset_buf), reset_buf)
 
-    rewards = torch.where(abs(shaft_tail_pos[:, 1]) > 0.3,
-                          torch.ones_like(rewards) * -2, rewards)
+    rewards = torch.where(abs(shaft_tail_pos[:, 1]) > 0.2,
+                          torch.ones_like(rewards) * -1, rewards)
 
-    reset_buf = torch.where(abs(shaft_tail_pos[:, 1]) > 0.3,
+    reset_buf = torch.where(abs(shaft_tail_pos[:, 1]) > 0.2,
                             torch.ones_like(reset_buf), reset_buf)
 
     rewards = torch.where(abs(shaft_tail_pos[:, 2]) > 0.4,
                           torch.ones_like(rewards) * -1, rewards)
 
     reset_buf = torch.where(abs(shaft_tail_pos[:, 2]) > 0.4,
+                            torch.ones_like(reset_buf), reset_buf)
+
+    rewards = torch.where(abs(shaft_tail_pos[:, 2]) < 0.05,
+                          torch.ones_like(rewards) * -1, rewards)
+
+    reset_buf = torch.where(abs(shaft_tail_pos[:, 2]) < 0.05,
                             torch.ones_like(reset_buf), reset_buf)
 
     reset_buf = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset_buf)

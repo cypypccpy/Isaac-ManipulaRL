@@ -616,7 +616,7 @@
   <joint name="shaft_joint" type="fixed">
     <parent link="wrist_3_link"/>
     <child link="shaft_link"/>
-    <origin rpy="1.57 1.57 0.0" xyz="-0.0 0.26 -0.06"/>
+    <origin rpy="1.57 1.57 0.0" xyz="-0.0 0.26 0.00"/>
   </joint>
 
   <!-- Improve grasping physics -->
