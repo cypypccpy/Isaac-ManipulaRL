@@ -620,8 +620,8 @@ def compute_baxter_reward(
 
     # distance from hand to the drawer
     d = torch.norm(baxter_grasp_pos - drawer_grasp_pos, p=2, dim=-1)
-    dist_reward = 1.0 / (1.0 + d ** 2)
-    dist_reward *= dist_reward
+    dist_reward = 1.0 - d
+    # dist_reward *= dist_reward
     dist_reward = torch.where(d <= 0.02, dist_reward * 2, dist_reward)
 
     axis1 = tf_vector(baxter_grasp_rot, gripper_forward_axis)
@@ -645,7 +645,7 @@ def compute_baxter_reward(
     rfinger_dist = torch.abs(baxter_rfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
     finger_dist_reward = torch.where(baxter_lfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
                                      torch.where(baxter_rfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
-                                                 (0.04 - lfinger_dist) + (0.04 - rfinger_dist), finger_dist_reward), finger_dist_reward)
+                                                 (0.1 - lfinger_dist) + (0.1 - rfinger_dist), finger_dist_reward), finger_dist_reward)
 
     # regularization on the actions (summed for each environment)
     action_penalty = torch.sum(actions ** 2, dim=-1)
@@ -666,18 +666,18 @@ def compute_baxter_reward(
                                                                           torch.where(open_reward > 0.01, rewards + 0.2,
                                                                                       torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
 
-    rewards = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-                          torch.ones_like(rewards) * -1, rewards)
-    rewards = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-                          torch.ones_like(rewards) * -1, rewards)
+    # rewards = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
+    #                       torch.ones_like(rewards) * -1, rewards)
+    # rewards = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
+    #                       torch.ones_like(rewards) * -1, rewards)
 
-    reset_buf = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-                            torch.ones_like(reset_buf), reset_buf)
-    reset_buf = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-                            torch.ones_like(reset_buf), reset_buf)
+    # reset_buf = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
+    #                         torch.ones_like(reset_buf), reset_buf)
+    # reset_buf = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
+    #                         torch.ones_like(reset_buf), reset_buf)
                 
-    reset_buf = torch.where(open_reward > 0.35,
-                            torch.ones_like(reset_buf), reset_buf)
+    # reset_buf = torch.where(open_reward > 0.35,
+    #                         torch.ones_like(reset_buf), reset_buf)
 
     reset_buf = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset_buf)
     return rewards, reset_buf

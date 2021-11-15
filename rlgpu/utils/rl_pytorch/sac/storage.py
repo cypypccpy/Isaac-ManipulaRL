@@ -12,9 +12,9 @@ from torch.distributions import Normal
 
 class ReplayBeffer():
     def __init__(self, buffer_maxlen, demonstration_buffer_maxlen):
-        self.buffer = collections.deque(maxlen=buffer_maxlen)
+        self.buffer = []
         self.demonstration_buffer = collections.deque(maxlen=demonstration_buffer_maxlen)
-        self.learning_buffer = []
+        self.learning_buffer = collections.deque(maxlen=buffer_maxlen)
         self.demonstration_buffer_maxlen = demonstration_buffer_maxlen
     
     def push(self, data):

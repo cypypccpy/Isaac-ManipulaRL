@@ -23,14 +23,14 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                 demonstration_buffer_len = 13650,
-                 replay_buffer_len = 1000000,
+                 demonstration_buffer_len = 7500,
+                 replay_buffer_len = 200000,
                  gamma=0.99,
                  init_noise_std=1.0,
                  learning_rate=1e-3,
                  tau = 0.005,
                  alpha = 0.2,
-                 reward_scale = 16,
+                 reward_scale = 4,
                  batch_size = 256,
                  schedule="fixed",
                  desired_kl=None,
@@ -91,9 +91,17 @@ class SAC:
         self.buffer = ReplayBeffer(self.replay_buffer_len, self.demonstration_buffer_len)
         # hyperparameters
         self.gamma = gamma
+        self.target_entropy = np.log(vec_env.num_actions)
         self.tau = tau
         self.alpha = alpha
+        # self.alpha_log = torch.tensor((-np.log(vec_env.num_actions) * np.e,), dtype=torch.float32,
+        #                         requires_grad=True, device=self.device)  # trainable parameter
+        self.alpha_log = torch.tensor((np.log(self.alpha),), dtype=torch.float32,
+                                requires_grad=True, device=self.device)  # trainable parameter
+        self.alpha_optimizer = torch.optim.Adam((self.alpha_log,), lr=learning_rate)
+
         self.batch_size = batch_size
+        self.criterion = torch.nn.SmoothL1Loss()
 
         # Load the target value network parameters
         for target_param, param in zip(self.actor_critic.target_value_net.parameters(), self.actor_critic.value_net.parameters()):
@@ -140,7 +148,7 @@ class SAC:
                 score = 0
                 current_obs = self.vec_env.reset()
                 # Rollout
-                for _ in range(500):
+                for _ in range(150):
                     if self.apply_reset:
                         current_obs = self.vec_env.reset()
                         current_states = self.vec_env.get_state()
@@ -149,6 +157,7 @@ class SAC:
                         actions = self.actor_critic.act(states)
                     else:
                         actions = self.vec_env.get_reverse_actions()
+                        print(actions[0])
                         # actions = self.actor_critic.act(states)
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
@@ -165,11 +174,12 @@ class SAC:
                     score += reward
                     # if done:
                     #     break
-                    if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1:
+                    if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
 
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
+                self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
                 Return.append(score)
                 score = 0
                 
@@ -180,8 +190,12 @@ class SAC:
     def update(self, batch_size):
         
         state, action, reward, next_state, done = self.buffer.sample(batch_size)
+
+        #-------------------------------
+        # SAC2018 Origin implementation
+        #-------------------------------
+
         # new_action, log_prob = self.actor_critic.evaluate(state)
-        
         # # V value loss
         # value = self.actor_critic.value_net(state)
         # new_q1_value = self.actor_critic.q1_net(state, new_action)
@@ -223,17 +237,65 @@ class SAC:
         # for target_param, param in zip(self.actor_critic.target_value_net.parameters(), self.actor_critic.value_net.parameters()):
         #     target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
 
+        #--------------------------
+        # SpinningUp implementation
+        #--------------------------
 
         # Set up function for computing Q function
+        # q1_value = self.actor_critic.q1_net(state, action)
+        # q2_value = self.actor_critic.q2_net(state, action)
+        # action2, log_prob2 = self.actor_critic.evaluate(next_state)
+        # target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
+        # target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
+        # backup = reward + self.gamma * (torch.min(target_q1_value, target_q2_value) - self.alpha * log_prob2)
+
+        # q1_value_loss = ((q1_value - backup) ** 2).mean()
+        # q2_value_loss = ((q2_value - backup) ** 2).mean()
+
+        # # Update Soft q
+        # self.q1_optimizer.zero_grad()
+        # self.q2_optimizer.zero_grad()
+        # q1_value_loss.backward(retain_graph=True)
+        # q2_value_loss.backward()
+        # self.q1_optimizer.step()
+        # self.q2_optimizer.step()
+
+        # # Set up function for computing SAC pi loss
+        # new_action, log_prob = self.actor_critic.evaluate(state)
+
+        # q1_pi_value = self.actor_critic.q1_net(state, new_action)
+        # q2_pi_value = self.actor_critic.q2_net(state, new_action)
+
+        # # Policy loss
+        # policy_loss = (self.alpha * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
+
+        # # Update Policy
+        # self.policy_optimizer.zero_grad()
+        # policy_loss.backward()
+        # self.policy_optimizer.step()
+
+        # # Update target networks
+        # for target_param, param in zip(self.actor_critic.target_q1_net.parameters(), self.actor_critic.q1_net.parameters()):
+        #     target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
+        # for target_param, param in zip(self.actor_critic.target_q2_net.parameters(), self.actor_critic.q2_net.parameters()):
+        #     target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
+
+        #--------------------------
+        # SAC2019 Origin implementation
+        #--------------------------
+        alpha = self.alpha_log.exp().detach()
+
+        with torch.no_grad():
+            action2, log_prob2 = self.actor_critic.evaluate(next_state)
+            target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
+            target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
+            backup = reward + self.gamma * (torch.min(target_q1_value, target_q2_value) - alpha * log_prob2)
+
         q1_value = self.actor_critic.q1_net(state, action)
         q2_value = self.actor_critic.q2_net(state, action)
-        action2, log_prob2 = self.actor_critic.evaluate(next_state)
-        target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
-        target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
-        backup = reward + self.gamma * (torch.min(target_q1_value, target_q2_value) - self.alpha * log_prob2)
 
-        q1_value_loss = ((q1_value - backup) ** 2).mean()
-        q2_value_loss = ((q2_value - backup) ** 2).mean()
+        q1_value_loss = self.criterion(q1_value, backup)
+        q2_value_loss = self.criterion(q2_value, backup)
 
         # Update Soft q
         self.q1_optimizer.zero_grad()
@@ -243,25 +305,32 @@ class SAC:
         self.q1_optimizer.step()
         self.q2_optimizer.step()
 
-        # Set up function for computing SAC pi loss
-        new_action, log_prob = self.actor_critic.evaluate(state)
-
-        q1_pi_value = self.actor_critic.q1_net(state, new_action)
-        q2_pi_value = self.actor_critic.q2_net(state, new_action)
-
-        # Policy loss
-        policy_loss = (self.alpha * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
-
-        # Update Policy
-        self.policy_optimizer.zero_grad()
-        policy_loss.backward()
-        self.policy_optimizer.step()
-
         # Update target networks
         for target_param, param in zip(self.actor_critic.target_q1_net.parameters(), self.actor_critic.q1_net.parameters()):
             target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
         for target_param, param in zip(self.actor_critic.target_q2_net.parameters(), self.actor_critic.q2_net.parameters()):
             target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
 
+        '''loss of alpha (temperature parameter automatic adjustment)'''
+        new_action, log_prob = self.actor_critic.evaluate(state)
 
+        alpha_loss = (- self.alpha_log * (log_prob - self.target_entropy).detach()).mean()
+        self.alpha_optimizer.zero_grad()
+        alpha_loss.backward()
+        self.alpha_optimizer.step()
 
+        '''loss of actor'''
+        alpha = self.alpha_log.exp().detach()
+
+        with torch.no_grad():
+            self.alpha_log[:] = self.alpha_log.clamp(-20, 2)
+        q1_pi_value = self.actor_critic.q1_net(state, new_action)
+        q2_pi_value = self.actor_critic.q2_net(state, new_action)
+
+        # Policy loss
+        policy_loss = (alpha * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
+
+        # Update Policy
+        self.policy_optimizer.zero_grad()
+        policy_loss.backward()
+        self.policy_optimizer.step()

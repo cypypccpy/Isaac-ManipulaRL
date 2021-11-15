@@ -161,10 +161,13 @@ class BaxterCabinet(BaseTask):
         asset_options.thickness = 0.001
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
         asset_options.use_mesh_materials = True
-        # asset_options.vhacd_enabled = True
-        # asset_options.vhacd_params.resolution = 300000
-        # asset_options.vhacd_params.max_convex_hulls = 10
-        # asset_options.vhacd_params.max_num_vertices_per_ch = 64
+        asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
+        asset_options.use_mesh_materials = True
+        asset_options.override_com = True
+        asset_options.override_inertia = True
+        asset_options.vhacd_enabled = True
+        asset_options.vhacd_params = gymapi.VhacdParams()
+        asset_options.vhacd_params.resolution = 500000
         baxter_asset = self.gym.load_asset(self.sim, asset_root, baxter_asset_file, asset_options)
 
         # load cabinet asset
@@ -173,6 +176,13 @@ class BaxterCabinet(BaseTask):
         asset_options.disable_gravity = False
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
         asset_options.armature = 0.005
+        asset_options.mesh_normal_mode = gymapi.COMPUTE_PER_VERTEX
+        asset_options.use_mesh_materials = True
+        asset_options.override_com = True
+        asset_options.override_inertia = True
+        asset_options.vhacd_enabled = True
+        asset_options.vhacd_params = gymapi.VhacdParams()
+        asset_options.vhacd_params.resolution = 500000
         cabinet_asset = self.gym.load_asset(self.sim, asset_root, cabinet_asset_file, asset_options)
 
         baxter_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 400, 400, 400, 400, 400, 400, 400], dtype=torch.float, device=self.device)
@@ -558,7 +568,7 @@ class BaxterCabinet(BaseTask):
             # from action's euler angle to quat
             orn_des_quat = torch.zeros_like(orn_cur)
             for i in range(self.num_envs):
-                orn_tem = gymapi.Quat.from_euler_zyx(1.57, -1.57, 1.57)
+                orn_tem = gymapi.Quat.from_euler_zyx(0, 0, 0)
                 orn_des_quat[i, :] = to_torch([orn_tem.w, orn_tem.x, orn_tem.y, orn_tem.z], dtype=torch.float, device=self.device)
 
             # pos_des = self.actions[:, 0:3] * self.dt * self.action_scale + self.rigid_body_states[:, self.hand_handle][:, :3]
@@ -569,7 +579,8 @@ class BaxterCabinet(BaseTask):
             orn_cur /= torch.norm(orn_cur, dim=-1).unsqueeze(-1)
             orn_err = orientation_error(orn_des, orn_cur)
 
-            pos_err = (pos_des - pos_cur)
+            pos_err = self.actions[:, :3] * self.dt * self.action_scale
+            orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
             dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
 
@@ -703,6 +714,7 @@ def compute_baxter_reward(
     around_handle_reward = torch.where(baxter_lfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
                                        torch.where(baxter_rfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
                                                    around_handle_reward + 0.5, around_handle_reward), around_handle_reward)
+
     # reward for distance of each finger from the drawer
     finger_dist_reward = torch.zeros_like(rot_reward)
     lfinger_dist = torch.abs(baxter_lfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
