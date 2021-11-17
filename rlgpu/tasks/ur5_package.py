@@ -442,7 +442,7 @@ class UR5Package(BaseTask):
         self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 2:
+        if self.demostration_round < 1:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 

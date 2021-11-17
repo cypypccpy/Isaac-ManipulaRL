@@ -1,6 +1,6 @@
 # if given, will override the device setting in gym. 
 env:
-  numEnvs: 200
+  numEnvs: 2
   envSpacing: 1.5
   episodeLength: 150
   enableDebugVis: False
@@ -19,11 +19,6 @@ env:
   openRewardScale: 0
   fingerDistRewardScale: 0
   actionPenaltyScale: 0.01
-
-  asset:
-    assetRoot: "../../assets"
-    assetFileNameFranka: "urdf/franka_description/robots/franka_panda.urdf"
-    assetFileNameCabinet: "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
 
 sim:
   substeps: 1

@@ -20,11 +20,6 @@ env:
   fingerDistRewardScale: 0
   actionPenaltyScale: 0.01
 
-  asset:
-    assetRoot: "../../assets"
-    assetFileNameFranka: "urdf/franka_description/robots/franka_panda.urdf"
-    assetFileNameCabinet: "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
-
 sim:
   substeps: 1
   physx:

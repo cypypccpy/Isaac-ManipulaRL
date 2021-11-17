@@ -25,7 +25,7 @@ def set_np_formatting():
 
 def warn_task_name():
     raise Exception(
-        "Unrecognized task!\nTask should be one of: [BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, ShadowHandLSTM, ShadowHandFFOpenAI, ShadowHandFFOpenAITest, ShadowHandOpenAI, ShadowHandOpenAITest, Ingenuity]")
+        "Unrecognized task!\nTask")
 
 
 def set_seed(seed, torch_deterministic=False):
@@ -64,7 +64,7 @@ def retrieve_cfg(args, use_rlg_config=False):
         elif args.task == "UR5Package":
             return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlg/rlg_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "UR5PickAndPlace":
-            return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlg/rlg_ur5_package.yaml", "cfg/ur5_package.yaml"
+            return os.path.join(args.logdir, "ur5_pick_and_place"), "cfg/train/rlg/rlg_ur5_pick_and_place.yaml", "cfg/ur5_pick_and_place.yaml"
         else:
             warn_task_name()
     else:

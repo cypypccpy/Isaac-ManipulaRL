@@ -23,7 +23,7 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                 demonstration_buffer_len = 7500,
+                 demonstration_buffer_len = 0,
                  replay_buffer_len = 200000,
                  gamma=0.99,
                  init_noise_std=1.0,

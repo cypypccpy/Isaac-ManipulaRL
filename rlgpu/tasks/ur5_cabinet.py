@@ -549,8 +549,6 @@ def compute_ur5_reward(
     dist_reward = 1.0 / (1.0 + d ** 2)
     dist_reward *= dist_reward
     dist_reward = torch.where(d <= 0.02, dist_reward * 2, dist_reward)
-    print(ur5_grasp_pos)
-    print("distance: {}".format(d))
 
     axis1 = tf_vector(ur5_grasp_rot, gripper_forward_axis)
     axis2 = tf_vector(drawer_grasp_rot, drawer_inward_axis)
@@ -561,7 +559,6 @@ def compute_ur5_reward(
     dot2 = torch.bmm(axis3.view(num_envs, 1, 3), axis4.view(num_envs, 3, 1)).squeeze(-1).squeeze(-1)  # alignment of up axis for gripper
     # reward for matching the orientation of the hand to the drawer (fingers wrapped)
     rot_reward = 0.5 * (torch.sign(dot1) * dot1 ** 2 + torch.sign(dot2) * dot2 ** 2)
-    print(dot1[:])
 
     # bonus if left finger is above the drawer handle and right below
     around_handle_reward = torch.zeros_like(rot_reward)

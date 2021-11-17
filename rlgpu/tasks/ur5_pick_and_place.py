@@ -21,7 +21,6 @@ from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
 
-
 class UR5PickAndPlace(BaseTask):
 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
@@ -64,9 +63,8 @@ class UR5PickAndPlace(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
-        self.device = 'cuda:0'
         self.num_dof_end = 12
-
+       
         # Camera Sensor
 
         super().__init__(cfg=self.cfg)
@@ -148,6 +146,8 @@ class UR5PickAndPlace(BaseTask):
         table_pose = gymapi.Transform()
         table_pose.p = gymapi.Vec3(0, 0, 0.2)
 
+        asset_options = gymapi.AssetOptions()
+        asset_options.density = 400
         asset_options.fix_base_link = True
         asset_options.thickness = 0.0001
         table_asset = self.gym.create_box(self.sim, table_dims.x, table_dims.y, table_dims.z, asset_options)
@@ -155,6 +155,7 @@ class UR5PickAndPlace(BaseTask):
         # create box asset
         box_size = 0.045
         asset_options = gymapi.AssetOptions()
+        asset_options.density = 400
         box_asset = self.gym.create_box(self.sim, box_size, box_size, box_size, asset_options)
 
         ur5_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e4, 1.0e4, 1.0e4, 1.0e4, 1.0e4], dtype=torch.float, device=self.device)
@@ -224,21 +225,21 @@ class UR5PickAndPlace(BaseTask):
             if self.aggregate_mode >= 3:
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
-            ur5_actor = self.gym.create_actor(env_ptr, ur5_asset, ur5_start_pose, "ur5", 0, 0, 0)
+            ur5_actor = self.gym.create_actor(env_ptr, ur5_asset, ur5_start_pose, "ur5", i, 0, 0)
             self.gym.set_actor_dof_properties(env_ptr, ur5_actor, ur5_dof_props)
 
             if self.aggregate_mode == 2:
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             # add table
-            table_handle = self.gym.create_actor(env_ptr, table_asset, table_pose, "table", i, 0)
+            table_handle = self.gym.create_actor(env_ptr, table_asset, table_pose, "table", i, 0, 0)
 
             # add box
             box_pose.p.x = table_pose.p.x + np.random.uniform(-0.2, 0.1)
             box_pose.p.y = table_pose.p.y + np.random.uniform(-0.3, 0.3)
             box_pose.p.z = table_dims.z + 0.5 * box_size
             box_pose.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 0, 1), np.random.uniform(-math.pi, math.pi))
-            box_handle = self.gym.create_actor(env_ptr, box_asset, box_pose, "box", i, 0)
+            box_handle = self.gym.create_actor(env_ptr, box_asset, box_pose, "box", i, 0, 0)
             color = gymapi.Vec3(np.random.uniform(0, 1), np.random.uniform(0, 1), np.random.uniform(0, 1))
             self.gym.set_rigid_body_color(env_ptr, box_handle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
 
@@ -444,7 +445,7 @@ class UR5PickAndPlace(BaseTask):
         # solve damped least squares
         j_eef_T = torch.transpose(self.j_eef, 1, 2)
         d = 0.05  # damping term
-        lmbda = torch.eye(6).to('cpu') * (d ** 2)
+        lmbda = torch.eye(6).to('cuda:0') * (d ** 2)
         u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 6, 1)
 
         # update position targets
