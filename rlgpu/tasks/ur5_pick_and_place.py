@@ -327,7 +327,6 @@ class UR5PickAndPlace(BaseTask):
         self.ur5_rfinger_pos = self.rigid_body_states[:, self.rfinger_handle][:, 0:3]
         self.ur5_lfinger_rot = self.rigid_body_states[:, self.lfinger_handle][:, 3:7]
         self.ur5_rfinger_rot = self.rigid_body_states[:, self.rfinger_handle][:, 3:7]
-        self.base_pos = self.rigid_body_states[:, self.base_handle][:, 0:3]
 
         self.lfinger_inner_knuckle_pos = self.rigid_body_states[:, self.lfinger_inner_knuckle_handle][:, 0:3]
         self.rfinger_inner_knuckle_pos = self.rigid_body_states[:, self.rfinger_inner_knuckle_handle][:, 0:3]
@@ -335,19 +334,12 @@ class UR5PickAndPlace(BaseTask):
         self.rfinger_inner_knuckle_rot = self.rigid_body_states[:, self.rfinger_inner_knuckle_handle][:, 3:7]
 
         # self.rigid_body_states[:, self.shaft_handle][:, :] = - (self.rigid_body_states[:, self.rfinger_inner_knuckle_handle] + self.rigid_body_states[:, self.lfinger_inner_knuckle_handle]) / 2.0 * 0.4 + (self.rigid_body_states[:, self.lfinger_handle] + self.rigid_body_states[:, self.lfinger_handle]) / 2.0 * 1.4
-        self.base_entry = self.rigid_body_states[:, self.base_handle].clone()
-
-        for i in range(self.num_envs):
-            self.base_entry[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.base_handle][:, 3:7][i], to_torch([0, 0, 1], device=self.device) * 0.09 * self.scale)
-            #self.base_entry[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.base_handle][:, 3:7][i], to_torch([0, 1, 0], device=self.device) * 0.016)
 
         self.shaft_tail = self.rigid_body_states[:, self.hand_handle].clone()
         for i in range(self.num_envs):
             self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([1, 0, 0], device=self.device) * 0.03)
             self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 1, 0], device=self.device) * 0.26)
             self.shaft_tail[:, 0:3][i] += quat_apply(self.rigid_body_states[:, self.hand_handle][:, 3:7][i], to_torch([0, 0, 1], device=self.device) * 0.16)
-
-        to_target = torch.norm(self.shaft_tail[:, 0:3] - self.base_entry[:, 0:3], p=2, dim=-1)
 
         # compute euler angle
         self.shaft_tail_euler_angle = torch.zeros(self.num_envs, 3)
@@ -363,8 +355,8 @@ class UR5PickAndPlace(BaseTask):
 
         # num: 12 + 12 + 3 + 1 + 1
         # hand_pos = hand_pos - to_torch([0.2075, -0.1989, 0.4304], dtype=torch.float, device=self.device)
-        self.obs_buf = torch.cat((self.shaft_tail[:, 0:3], to_target.unsqueeze(-1)), dim=-1)
-        # self.obs_buf = self.shaft_tail[:, 0:3]
+        # self.obs_buf = torch.cat((self.shaft_tail[:, 0:3], to_target.unsqueeze(-1)), dim=-1)
+        self.obs_buf = self.shaft_tail[:, 0:3]
 
         return self.obs_buf
 
@@ -381,7 +373,7 @@ class UR5PickAndPlace(BaseTask):
 
         # reset base
 
-        multi_env_ids_int32 = self.global_indices[env_ids, :2].flatten()
+        multi_env_ids_int32 = self.global_indices[env_ids, :1].flatten()
         
         # pos_err = torch.rand((self.num_envs, 3), device=self.device) * 4 - 2
         # # pos_err[:, 2] = (self.actions[:, 2] - 1) / 0.5 * self.dt * self.action_scale
@@ -446,7 +438,7 @@ class UR5PickAndPlace(BaseTask):
         j_eef_T = torch.transpose(self.j_eef, 1, 2)
         d = 0.05  # damping term
         lmbda = torch.eye(6).to('cuda:0') * (d ** 2)
-        u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 6, 1)
+        u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 12, 1)
 
         # update position targets
         self.ur5_dof_targets[:, :self.num_ur5_dofs] = self.ur5_dof_targets[:, :self.num_ur5_dofs] + u.squeeze(-1)
