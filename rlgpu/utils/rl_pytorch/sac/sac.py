@@ -23,15 +23,15 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                 demonstration_buffer_len = 0,
-                 replay_buffer_len = 200000,
+                 demonstration_buffer_len = 20000,
+                 replay_buffer_len = 400000,
                  gamma=0.99,
                  init_noise_std=1.0,
                  learning_rate=1e-3,
                  tau = 0.005,
                  alpha = 0.2,
-                 reward_scale = 4,
-                 batch_size = 256,
+                 reward_scale = 0.5,
+                 batch_size = 512,
                  schedule="fixed",
                  desired_kl=None,
                  model_cfg=None,
@@ -82,6 +82,7 @@ class SAC:
         q_lr = learning_rate
         value_lr = learning_rate
         policy_lr = learning_rate
+        # ur5_package reward_scale: 4
         self.reward_scale = reward_scale
         self.value_optimizer = optim.Adam(self.actor_critic.value_net.parameters(), lr=value_lr)
         self.q1_optimizer = optim.Adam(self.actor_critic.q1_net.parameters(), lr=q_lr)
@@ -148,7 +149,7 @@ class SAC:
                 score = 0
                 current_obs = self.vec_env.reset()
                 # Rollout
-                for _ in range(150):
+                for _ in range(self.num_learning_epochs):
                     if self.apply_reset:
                         current_obs = self.vec_env.reset()
                         current_states = self.vec_env.get_state()
@@ -157,7 +158,7 @@ class SAC:
                         actions = self.actor_critic.act(states)
                     else:
                         actions = self.vec_env.get_reverse_actions()
-                        print(actions[0])
+                        # print(actions[0])
                         # actions = self.actor_critic.act(states)
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
@@ -289,7 +290,7 @@ class SAC:
             action2, log_prob2 = self.actor_critic.evaluate(next_state)
             target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
             target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
-            backup = reward + self.gamma * (torch.min(target_q1_value, target_q2_value) - alpha * log_prob2)
+            backup = reward + (1 - done) * self.gamma * (torch.min(target_q1_value, target_q2_value) - alpha * log_prob2)
 
         q1_value = self.actor_critic.q1_net(state, action)
         q2_value = self.actor_critic.q2_net(state, action)
