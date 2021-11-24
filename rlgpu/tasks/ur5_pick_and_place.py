@@ -52,7 +52,7 @@ class UR5PickAndPlace(BaseTask):
         self.distX_offset = 0.04
         self.dt = 1/60.
 
-        self.num_obs = 4
+        self.num_obs = 3
         self.num_acts = 3
         self.scale = 1.5
 
@@ -142,9 +142,9 @@ class UR5PickAndPlace(BaseTask):
         asset_options.vhacd_params.resolution = 500000
         ur5_asset = self.gym.load_asset(self.sim, asset_root, ur5_asset_file, asset_options)
 
-        table_dims = gymapi.Vec3(0.6, 1.0, 0.4)
+        table_dims = gymapi.Vec3(0.6, 1.0, 0.2)
         table_pose = gymapi.Transform()
-        table_pose.p = gymapi.Vec3(0, 0, 0.2)
+        table_pose.p = gymapi.Vec3(0, 0, 0.1)
 
         asset_options = gymapi.AssetOptions()
         asset_options.density = 400
@@ -305,9 +305,9 @@ class UR5PickAndPlace(BaseTask):
     def compute_reward(self, actions):
         self.rew_buf[:], self.reset_buf[:] = compute_ur5_reward(
             self.reset_buf, self.progress_buf, self.actions,
-            self.ur5_grasp_pos, self.base_pos,
-            self.shaft_tail[:, 0:3], self.base_entry[:, 0:3],
-            self.shaft_tail_euler_angle, self.base_entry[:, 3:7],
+            self.ur5_grasp_pos,
+            self.shaft_tail[:, 0:3],
+            self.shaft_tail_euler_angle,
             self.num_envs, self.dist_reward_scale, self.rot_reward_scale, self.around_handle_reward_scale, self.open_reward_scale,
             self.finger_dist_reward_scale, self.action_penalty_scale, self.scale, self.max_episode_length
         )
@@ -507,30 +507,22 @@ class UR5PickAndPlace(BaseTask):
 @torch.jit.script
 def compute_ur5_reward(
     reset_buf, progress_buf, actions,
-    ur5_grasp_pos,  base_pos, 
-    shaft_tail_pos, base_entry_pos,
-    shaft_tail_euler_angle,  base_entry_rot,
+    ur5_grasp_pos, 
+    shaft_tail_pos,
+    shaft_tail_euler_angle,
     num_envs, dist_reward_scale, rot_reward_scale, around_handle_reward_scale, open_reward_scale,
     finger_dist_reward_scale, action_penalty_scale, scale, max_episode_length
 ):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
 
     # distance from hand to the drawer
     # d = torch.norm(shaft_tail_pos - base_entry_pos, p=2, dim=-1)
     # dist_reward = 1.0 / (1.0 + d ** 2)
 
-    dist_reward = 0.4 - torch.abs(shaft_tail_pos[:, 2] - base_entry_pos[:, 2]) + 0.4 - torch.abs(shaft_tail_pos[:, 0] - base_entry_pos[:, 0]) + 0.4 - torch.abs(shaft_tail_pos[:, 1] - base_entry_pos[:, 1])
-    plane_dist_reward = torch.zeros_like(dist_reward)
-    plane_dist_reward = torch.where(shaft_tail_pos[:, 2] < base_entry_pos[:, 2],
-                            torch.where(torch.abs(shaft_tail_pos[:, 0]) < 0.015 * scale,
-                                torch.where(torch.abs(shaft_tail_pos[:, 1]) < 0.015 * scale,
-                                    plane_dist_reward + base_entry_pos[:, 2] - shaft_tail_pos[:, 2], plane_dist_reward), plane_dist_reward), plane_dist_reward)
-
     # regularization on the actions (summed for each environment)
     action_penalty = torch.sum(actions ** 2, dim=-1)
 
-    rewards = dist_reward_scale * dist_reward + plane_dist_reward * 10 - action_penalty_scale * action_penalty
-    print(len(plane_dist_reward[plane_dist_reward > 0]))
+    rewards =  - action_penalty_scale * action_penalty
 
     # rewards = torch.where(torch.abs(shaft_tail_pos[:, 0]) > 0.2,
     #                       torch.ones_like(rewards) * -2.5, rewards)
@@ -549,24 +541,6 @@ def compute_ur5_reward(
 
     # reset_buf = torch.where(torch.abs(shaft_tail_pos[:, 2]) > 0.4,
     #                         torch.ones_like(reset_buf), reset_buf)
-    rewards = torch.where(plane_dist_reward == 0, torch.where(torch.abs(shaft_tail_euler_angle[:, 1] - 0) > 0.25,
-                          torch.ones_like(rewards) * -2.5, rewards), rewards)
-
-    reset_buf = torch.where(plane_dist_reward == 0, torch.where(torch.abs(shaft_tail_euler_angle[:, 1] - 0) > 0.25,
-                          torch.ones_like(reset_buf), reset_buf), reset_buf)
-
-    rewards = torch.where(plane_dist_reward == 0, torch.where(torch.abs(abs(shaft_tail_euler_angle[:, 0]) - 3.14) > 0.25,
-                          torch.ones_like(rewards) * -2.5, rewards), rewards)
-
-    reset_buf = torch.where(plane_dist_reward == 0, torch.where(torch.abs(abs(shaft_tail_euler_angle[:, 0]) - 3.14) > 0.25,
-                          torch.ones_like(reset_buf), reset_buf), reset_buf)
-
-    rewards = torch.where(plane_dist_reward == 0, torch.where(torch.abs(shaft_tail_euler_angle[:, 2] + 1.57) > 0.25,
-                          torch.ones_like(rewards) * -2.5, rewards), rewards)
-
-    reset_buf = torch.where(plane_dist_reward == 0, torch.where(torch.abs(shaft_tail_euler_angle[:, 2] + 1.57) > 0.25,
-                          torch.ones_like(reset_buf), reset_buf), reset_buf)
-
     reset_buf = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset_buf)
     return rewards, reset_buf
 

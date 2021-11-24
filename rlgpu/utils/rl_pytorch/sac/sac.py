@@ -23,13 +23,13 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                 demonstration_buffer_len = 20000,
-                 replay_buffer_len = 400000,
+                 demonstration_buffer_len = 50000,
+                 replay_buffer_len = 600000,
                  gamma=0.99,
                  init_noise_std=1.0,
-                 learning_rate=1e-3,
+                 learning_rate=3e-4,
                  tau = 0.005,
-                 alpha = 0.2,
+                 alpha = 4,
                  reward_scale = 0.5,
                  batch_size = 512,
                  schedule="fixed",
@@ -92,14 +92,13 @@ class SAC:
         self.buffer = ReplayBeffer(self.replay_buffer_len, self.demonstration_buffer_len)
         # hyperparameters
         self.gamma = gamma
-        self.target_entropy = np.log(vec_env.num_actions)
+        self.target_entropy = - vec_env.num_actions
         self.tau = tau
-        self.alpha = alpha
         # self.alpha_log = torch.tensor((-np.log(vec_env.num_actions) * np.e,), dtype=torch.float32,
         #                         requires_grad=True, device=self.device)  # trainable parameter
-        self.alpha_log = torch.tensor((np.log(self.alpha),), dtype=torch.float32,
+        self.alpha = torch.tensor((1,), dtype=torch.float32,
                                 requires_grad=True, device=self.device)  # trainable parameter
-        self.alpha_optimizer = torch.optim.Adam((self.alpha_log,), lr=learning_rate)
+        self.alpha_optimizer = torch.optim.Adam((self.alpha,), lr=learning_rate)
 
         self.batch_size = batch_size
         self.criterion = torch.nn.SmoothL1Loss()
@@ -167,7 +166,7 @@ class SAC:
                     reward *= self.reward_scale
 
                     if self.buffer.buffer_len() < self.demonstration_buffer_len:
-                        self.buffer.push_demonstration_data((states, actions, reward, next_states, done), 50)
+                        self.buffer.push_demonstration_data((states, actions, reward, next_states, done), 200)
                     else:
                         self.buffer.push((states, actions, reward, next_states, done))
                     states = next_states
@@ -180,7 +179,7 @@ class SAC:
 
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
-                self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
+                self.writer.add_scalar('Reward/Alpha', self.alpha.detach().mean(), it)
                 Return.append(score)
                 score = 0
                 
@@ -284,7 +283,7 @@ class SAC:
         #--------------------------
         # SAC2019 Origin implementation
         #--------------------------
-        alpha = self.alpha_log.exp().detach()
+        alpha = self.alpha.detach()
 
         with torch.no_grad():
             action2, log_prob2 = self.actor_critic.evaluate(next_state)
@@ -315,16 +314,16 @@ class SAC:
         '''loss of alpha (temperature parameter automatic adjustment)'''
         new_action, log_prob = self.actor_critic.evaluate(state)
 
-        alpha_loss = (- self.alpha_log * (log_prob - self.target_entropy).detach()).mean()
+        alpha_loss = (- self.alpha * (log_prob + self.target_entropy).detach()).mean()
         self.alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.alpha_optimizer.step()
 
         '''loss of actor'''
-        alpha = self.alpha_log.exp().detach()
+        alpha = self.alpha.detach()
 
         with torch.no_grad():
-            self.alpha_log[:] = self.alpha_log.clamp(-20, 2)
+            self.alpha[:] = self.alpha.clamp(np.exp(-20), np.exp(2))
         q1_pi_value = self.actor_critic.q1_net(state, new_action)
         q2_pi_value = self.actor_critic.q2_net(state, new_action)
 

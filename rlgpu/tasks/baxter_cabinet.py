@@ -507,12 +507,12 @@ class BaxterCabinet(BaseTask):
             self.demostration_step += 1
 
             # set demonstration===============================================================================================
-            if(self.demostration_step <= 100):
-                pos_err = - self.demostration_step / 1000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(250 >= self.demostration_step > 100):
-                pos_err = - (self.demostration_step - 100) / 1000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.61, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(self.demostration_step > 250):
-                pos_err = - (self.demostration_step - 250) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(self.demostration_step <= 50):
+                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(100 >= self.demostration_step > 50):
+                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(self.demostration_step > 100):
+                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             # set demonstration================================================================================================
             orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
@@ -528,7 +528,7 @@ class BaxterCabinet(BaseTask):
             self.baxter_dof_targets[:, :self.num_baxter_dofs] = self.baxter_dof_targets[:, :self.num_baxter_dofs] + u.squeeze(-1)
 
             for i in range(self.num_envs):
-                if self.demostration_step < 250:
+                if self.demostration_step < 100:
                     self.baxter_dof_targets[i, 17] = 0.02
                     self.baxter_dof_targets[i, 18] = -0.02
                     gripper_flag = to_torch([1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
@@ -546,7 +546,7 @@ class BaxterCabinet(BaseTask):
             
             self.reverse_actions = torch.cat([self.reverse_actions, gripper_flag], -1)
 
-            if self.demostration_step == 400:
+            if self.demostration_step == 250:
                 self.reset_buf = torch.ones_like(self.reset_buf)
 
         else:
@@ -666,8 +666,9 @@ def compute_baxter_reward(
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
 
     # distance from hand to the drawer
-    dist_reward = 0.4 - torch.abs(baxter_grasp_pos[:, 2] - drawer_grasp_pos[:, 2]) + 0.4 - torch.abs(baxter_grasp_pos[:, 0] - drawer_grasp_pos[:, 0]) + 0.4 - torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1])
-
+    dist_reward = 0.2 - torch.abs(baxter_grasp_pos[:, 2] - drawer_grasp_pos[:, 2]) + 0.4 - 2 * torch.abs(baxter_grasp_pos[:, 0] - drawer_grasp_pos[:, 0]) + 0.2 - torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1])
+    dist_reward = torch.where(dist_reward > 0.5, dist_reward * 2, dist_reward)
+    
     axis1 = tf_vector(baxter_grasp_rot, gripper_forward_axis)
     axis2 = tf_vector(drawer_grasp_rot, drawer_inward_axis)
     axis3 = tf_vector(baxter_grasp_rot, gripper_up_axis)
@@ -687,13 +688,14 @@ def compute_baxter_reward(
     finger_dist_reward = torch.zeros_like(rot_reward)
     lfinger_dist = torch.abs(baxter_lfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
     rfinger_dist = torch.abs(baxter_rfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
-    finger_dist_reward = torch.where(baxter_lfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
-                                     torch.where(baxter_rfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
-                                                 (0.04 - lfinger_dist) + (0.04 - rfinger_dist), finger_dist_reward), finger_dist_reward)
+    finger_dist_reward = torch.where(baxter_grasp_pos[:, 0] < drawer_grasp_pos[:, 0] + 0.02,
+                                     torch.where(baxter_lfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
+                                        torch.where(baxter_rfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
+                                                 (drawer_grasp_pos[:, 0] - baxter_grasp_pos[:, 0] + 0.02) + (0.04 - lfinger_dist) + (0.04 - rfinger_dist), finger_dist_reward), finger_dist_reward), finger_dist_reward)
     
     # regularization on the actions (summed for each environment)
     # action_penalty = torch.sum(actions ** 2, dim=-1)
-
+    print(len(finger_dist_reward[finger_dist_reward > 0.]))
 
     # how far the cabinet has been opened out
     open_reward = cabinet_dof_pos[:, 3]  # drawer_top_joint
@@ -709,12 +711,7 @@ def compute_baxter_reward(
                                                               torch.where(open_reward > 0.05, rewards + 0.35,
                                                                           torch.where(open_reward > 0.01, rewards + 0.2,
                                                                                       torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
-
-    rewards = torch.where(baxter_grasp_pos[:, 2] > 1.85,
-                          torch.ones_like(rewards) * -2.5, rewards)
-
-    reset_buf = torch.where(baxter_grasp_pos[:, 2] > 1.8,
-                            torch.ones_like(reset_buf), reset_buf)
+                                                                                      
                 
     # reset_buf = torch.where(open_reward > 0.35,
     #                         torch.ones_like(reset_buf), reset_buf)
