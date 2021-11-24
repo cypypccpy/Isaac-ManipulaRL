@@ -1,4 +1,4 @@
-# Isaac-drlgrasp
+# Isaac-ManipulaRL
 
 ![Image text](img-folder/2222.png)
 
@@ -19,7 +19,7 @@
 
 ## Background
 
-The Manipulator reinforcement learning based on [Isaac-gym](https://developer.nvidia.com/isaac-gym), the following additional implementations are added:
+The Manipulator Reinforcement Learning based on [Isaac-gym](https://developer.nvidia.com/isaac-gym), the following additional implementations are added:
 - Add Baxter and UR5 robots and supporting environment like open cabinet, assembly and pick & place
 - Customizable neural network structure
 - Visual input reinforcement learning processing pipeline
