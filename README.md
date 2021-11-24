@@ -19,12 +19,12 @@
 
 ## Background
 
-The Manipulator reinforcement learning based on Isaac-gym, the following additional implementations are added:
+The Manipulator reinforcement learning based on [Isaac-gym](https://developer.nvidia.com/isaac-gym), the following additional implementations are added:
 - Add Baxter and UR5 robots and supporting environment like open cabinet, assembly and pick & place
 - Customizable neural network structure
 - Visual input reinforcement learning processing pipeline
 - SAC2019 Algorithm
-- Demonstration
+- Reinforcement Learning from Demonstration
 - ROS wrapper
 
 This project is **still under development** and detailed usage documentation will be available upon completion.
@@ -71,7 +71,6 @@ To uninstall, run:
     conda remove --name rlgpu --all
 
 For troubleshooting check docs `docs/index.html`
-
 <br></br>
 
 ## Usage
@@ -85,7 +84,7 @@ python train --task BaxterCabinet
 You can choose to use PPO or SAC in `train.py` 
 ## TODO
 
-Still in development
+**Still in development**
 <br></br>
 
 ## Contributing
