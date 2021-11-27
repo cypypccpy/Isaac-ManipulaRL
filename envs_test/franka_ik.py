@@ -197,6 +197,7 @@ for i in range(num_envs):
     franka_handle = gym.create_actor(env, franka_asset, franka_pose, "franka", i, 2)
 
     body_handle = gym.get_actor_rigid_body_handle(env, franka_handle, 0)
+    lfinger_handle = gym.find_actor_rigid_body_handle(env, franka_handle, "right_wrist")
     sensor_pose1 = gymapi.Transform(gymapi.Vec3(0.0, 0.0, 0.0))
     sensor1 = gym.create_force_sensor(env, body_handle, sensor_pose1)
 
@@ -261,6 +262,9 @@ _dof_states = gym.acquire_dof_state_tensor(sim)
 dof_states = gymtorch.wrap_tensor(_dof_states)
 dof_pos = dof_states[:, 0].view(num_envs, 9, 1)
 
+_fsdata = gym.acquire_force_sensor_tensor(sim)
+fsdata = gymtorch.wrap_tensor(_fsdata)
+
 # Create a tensor noting whether the hand should return to the initial position
 hand_restart = torch.full([num_envs], False, dtype=torch.bool).to(device)
 
@@ -275,6 +279,7 @@ while not gym.query_viewer_has_closed(viewer):
     gym.refresh_rigid_body_state_tensor(sim)
     gym.refresh_dof_state_tensor(sim)
     gym.refresh_jacobian_tensors(sim)
+    gym.refresh_force_sensor_tensor(sim)
 
     box_pos = rb_states[box_idxs, :3]
     box_rot = rb_states[box_idxs, 3:7]
@@ -339,6 +344,7 @@ while not gym.query_viewer_has_closed(viewer):
     pos_target[:, 7:9] = grip_acts.unsqueeze(-1)
 
     # set new position targets
+    print(fsdata[0])
     gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
 
     # update viewer

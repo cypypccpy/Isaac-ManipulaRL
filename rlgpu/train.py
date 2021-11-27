@@ -21,7 +21,7 @@ import torch
 def train():
     task, env = parse_task(args, cfg, cfg_train, sim_params)
     # rl_algorithm = process_ppo(args, env, cfg_train, logdir)
-    rl_algorithm = process_ppo(args, env, cfg_train, logdir)
+    rl_algorithm = process_sac(args, env, cfg_train, logdir)
 
     rl_algorithm_iterations = cfg_train["learn"]["max_iterations"]
     if args.max_iterations > 0:

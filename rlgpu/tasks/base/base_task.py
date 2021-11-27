@@ -42,6 +42,7 @@ class BaseTask():
         self.num_obs = cfg["env"]["numObservations"]
         self.num_states = cfg["env"].get("numStates", 0)
         self.num_actions = cfg["env"]["numActions"]
+        self.use_her = False
 
         self.control_freq_inv = cfg["env"].get("controlFrequencyInv", 1)
 
