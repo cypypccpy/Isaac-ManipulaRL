@@ -13,7 +13,7 @@ import os
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from rlgpu.utils.torch_jit_utils import *
-from rlgpu.tasks.base.base_task import BaseTask
+from tasks.base.base_task import BaseTask
 import torch
 
 import matplotlib
@@ -79,6 +79,8 @@ class BaxterCabinet(BaseTask):
         self.camera_props.enable_tensors = True
         self.debug_fig = plt.figure("debug")
 
+        self.use_her = False
+    
         self.demostration = Demostration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
         self.demostration_round = 0
         self.demostration_step = 0
@@ -334,7 +336,7 @@ class BaxterCabinet(BaseTask):
             self.baxters.append(baxter_actor)
             self.cabinets.append(cabinet_actor)
             self.camera_handles.append(camera_handle)
-            
+
         self.hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
         self.drawer_handle = self.gym.find_actor_rigid_body_handle(env_ptr, cabinet_actor, "drawer_top")
         self.lfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "r_gripper_l_finger")

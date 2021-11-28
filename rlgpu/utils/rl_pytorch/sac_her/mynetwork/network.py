@@ -28,17 +28,15 @@ class ValueNet(nn.Module):
 class SoftQNet(nn.Module):
     def __init__(self, state_dim, action_dim, edge=3e-3):
         super(SoftQNet, self).__init__()
-        self.linear1 = nn.Linear(state_dim + action_dim, 256)
-        self.linear2 = nn.Linear(256, 128)
-        self.linear3 = nn.Linear(128, 64)
-        self.linear4 = nn.Linear(64, 1)
+        self.linear1 = nn.Linear(state_dim + action_dim, 128)
+        self.linear2 = nn.Linear(128, 64)
+        self.linear3 = nn.Linear(64, 1)
 
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
-        x = self.linear4(x)
+        x = self.linear3(x)
 
         return x
 
@@ -50,9 +48,8 @@ class PolicyNet(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
 
-        self.linear1 = nn.Linear(state_dim, 256)
-        self.linear2 = nn.Linear(256, 128)
-        self.linear3 = nn.Linear(128, 64)
+        self.linear1 = nn.Linear(state_dim, 128)
+        self.linear2 = nn.Linear(128, 64)
         self.bn1 = nn.BatchNorm1d(state_dim)
 
         self.mean_linear = nn.Linear(64, action_dim)
@@ -62,7 +59,6 @@ class PolicyNet(nn.Module):
     def forward(self, state):
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
 
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)

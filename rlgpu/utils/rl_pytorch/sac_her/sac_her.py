@@ -18,19 +18,18 @@ from utils.rl_pytorch.sac import ReplayBeffer
 
 
 class SAC:
-
     def __init__(self,
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
                  demonstration_buffer_len = 50000,
-                 replay_buffer_len = 1000000,
+                 replay_buffer_len = 600000,
                  gamma=0.99,
                  init_noise_std=1.0,
                  learning_rate=3e-4,
                  tau = 0.005,
                  alpha = 4,
-                 reward_scale = 0.5,
+                 reward_scale = 1,
                  batch_size = 256,
                  schedule="fixed",
                  desired_kl=None,
@@ -94,7 +93,7 @@ class SAC:
         self.gamma = gamma
         self.target_entropy = np.log(vec_env.num_actions)
         self.tau = tau
-        self.alpha_log = torch.tensor((np.log(0.2),), dtype=torch.float32,
+        self.alpha_log = torch.tensor((0.2,), dtype=torch.float32,
                                 requires_grad=True, device=self.device)  # trainable parameter
         # self.alpha = torch.tensor((1,), dtype=torch.float32,
         #                         requires_grad=True, device=self.device)  # trainable parameter
@@ -147,33 +146,33 @@ class SAC:
             for it in range(self.current_learning_iteration, num_learning_iterations):
                 score = 0
                 current_obs = self.vec_env.reset()
+                goal = self.vec_env.get_desired_goal()
                 # Rollout
+                for T in range(self.num_learning_epochs):
+                    actions = self.actor_critic.act(torch.cat([states, goal], -1))
+                    next_states, reward, done, goal, _ = self.vec_env.step(actions)
+                    # implement reward scale
+                    reward *= self.reward_scale
+
+                    self.buffer.push((torch.cat([states, goal], -1), actions, reward, torch.cat([next_states, goal], -1), done))
+
+                    states = next_states
+                    goal = self.vec_env.get_desired_goal()
+
+                for T in range(self.num_learning_epochs):
+                    # future
+                    indexes = np.random.randint(T, self.num_learning_epochs, size = 8)
+                    for index in indexes:
+                        achieved_goal, buffer = self.buffer.get_achieved_goal()
+
+                        achieved_reward = self.vec_env.get_achieved_reward(achieved_goal, buffer[0])
+                        self.buffer.push((torch.cat([buffer[0], achieved_goal], -1), buffer[1], achieved_reward, torch.cat([buffer[3], achieved_goal], -1), buffer[4]))
+
                 for _ in range(self.num_learning_epochs):
                     if self.apply_reset:
                         current_obs = self.vec_env.reset()
                         current_states = self.vec_env.get_state()
-                    # Compute the action
-                    if self.buffer.buffer_len() >= self.demonstration_buffer_len:
-                        actions = self.actor_critic.act(states)
-                    else:
-                        actions = self.vec_env.get_reverse_actions()
-                        print(actions[0])
-                        # actions = self.actor_critic.act(states)
-                    # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
-                    # Step the vec_environment
-                    next_states, reward, done, _ = self.vec_env.step(actions)
-                    # implement reward scale
-                    reward *= self.reward_scale
 
-                    if self.buffer.buffer_len() < self.demonstration_buffer_len:
-                        self.buffer.push_demonstration_data((states, actions, reward, next_states, done), 200)
-                    else:
-                        self.buffer.push((states, actions, reward, next_states, done))
-                    states = next_states
-
-                    score += reward
-                    # if done:
-                    #     break
                     if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
                     

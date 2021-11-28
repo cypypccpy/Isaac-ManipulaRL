@@ -83,7 +83,7 @@ class BaseTask():
         # todo: read from config
         self.enable_viewer_sync = True
         self.viewer = None
-
+        
         # if running with a viewer, set up keyboard shortcuts and camera
         if self.headless == False:
             # subscribe to keyboard shortcuts
@@ -103,8 +103,14 @@ class BaseTask():
                 cam_pos = gymapi.Vec3(20.0, 3.0, 25.0)
                 cam_target = gymapi.Vec3(10.0, 0.0, 15.0)
 
-            self.gym.viewer_camera_look_at(
-                self.viewer, None, cam_pos, cam_target)
+            # self.gym.viewer_camera_look_at(
+            #     self.viewer, None, cam_pos, cam_target)
+
+            # point camera at middle env
+            cam_pos = gymapi.Vec3(4, 3, 2)
+            cam_target = gymapi.Vec3(-4, -3, 0)
+            middle_env = self.envs[self.num_envs // 2]
+            self.gym.viewer_camera_look_at(self.viewer, middle_env, cam_pos, cam_target)
 
     # set gravity based on up axis and return axis index
     def set_sim_params_up_axis(self, sim_params, axis):
@@ -128,7 +134,6 @@ class BaseTask():
         if self.dr_randomizations.get('actions', None):
             actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
-        
         # apply actions
         self.pre_physics_step(actions)
 

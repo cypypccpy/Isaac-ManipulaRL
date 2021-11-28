@@ -11,7 +11,7 @@ learn:
   agent_name: mynewtask_ppo
   test: False
   resume: 0
-  save_interval: 100 # check for potential saves every this many iterations
+  save_interval: 10 # check for potential saves every this many iterations
   print_log: True
 
   # rollout params
@@ -21,7 +21,7 @@ learn:
   cliprange: 0.2
   ent_coef: 0.0
   nsteps: 32
-  noptepochs: 20
+  noptepochs: 500
   nminibatches: 4 # this is per agent
   max_grad_norm: 1
   optim_stepsize: 3.e-4 # 3e-4 is default for single agent training with constant schedule

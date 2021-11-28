@@ -394,7 +394,7 @@ class BaxterCabinet(BaseTask):
         self.rew_buf[:], self.reset_buf[:] = compute_baxter_reward(
             self.reset_buf, self.progress_buf, self.actions, self.cabinet_dof_pos,
             self.baxter_grasp_pos, self.drawer_grasp_pos, self.baxter_grasp_rot, self.drawer_grasp_rot,
-            self.baxter_lfinger_pos, self.baxter_rfinger_pos,
+            self.baxter_lfinger_pos, self.baxter_rfinger_pos, self.goal_buf,
             self.gripper_forward_axis, self.drawer_inward_axis, self.gripper_up_axis, self.drawer_up_axis,
             self.num_envs, self.dist_reward_scale, self.rot_reward_scale, self.around_handle_reward_scale, self.open_reward_scale,
             self.finger_dist_reward_scale, self.action_penalty_scale, self.distX_offset, self.max_episode_length
@@ -432,6 +432,8 @@ class BaxterCabinet(BaseTask):
         # num: 12 + 12 + 3 + 1 + 1
         self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:19], to_target,
                                   self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
+
+        self.goal_buf = torch.cat((to_target, self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
 
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
@@ -614,6 +616,7 @@ class BaxterCabinet(BaseTask):
         # self.gym.end_access_image_tensors(self.sim)
         # self.debug_fig.clf()
 
+
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
@@ -623,73 +626,16 @@ class BaxterCabinet(BaseTask):
 def compute_baxter_reward(
     reset_buf, progress_buf, actions, cabinet_dof_pos,
     baxter_grasp_pos, drawer_grasp_pos, baxter_grasp_rot, drawer_grasp_rot,
-    baxter_lfinger_pos, baxter_rfinger_pos,
+    baxter_lfinger_pos, baxter_rfinger_pos, goal_buf,
     gripper_forward_axis, drawer_inward_axis, gripper_up_axis, drawer_up_axis,
     num_envs, dist_reward_scale, rot_reward_scale, around_handle_reward_scale, open_reward_scale,
     finger_dist_reward_scale, action_penalty_scale, distX_offset, max_episode_length
 ):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
+    rewards = torch.zeros_like(reset_buf)
+    rewards = torch.where(torch.abs(baxter_grasp_pos - goal_buf[:, :3]).mean(keepdim=1) < 0.02 and torch.abs(cabinet_dof_pos[: ,3] - goal_buf[: ,3]) < 0.01, rewards + 1, rewards)
 
-    # distance from hand to the drawer
-    dist_reward = 0.2 - torch.abs(baxter_grasp_pos[:, 2] - drawer_grasp_pos[:, 2]) + 0.4 - 2 * torch.abs(baxter_grasp_pos[:, 0] - drawer_grasp_pos[:, 0]) + 0.2 - torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1])
-    dist_reward = torch.where(dist_reward > 0.6, dist_reward * 2, dist_reward)
-    
-    axis1 = tf_vector(baxter_grasp_rot, gripper_forward_axis)
-    axis2 = tf_vector(drawer_grasp_rot, drawer_inward_axis)
-    axis3 = tf_vector(baxter_grasp_rot, gripper_up_axis)
-    axis4 = tf_vector(drawer_grasp_rot, drawer_up_axis)
-
-    dot1 = torch.bmm(axis1.view(num_envs, 1, 3), axis2.view(num_envs, 3, 1)).squeeze(-1).squeeze(-1)  # alignment of forward axis for gripper
-    dot2 = torch.bmm(axis3.view(num_envs, 1, 3), axis4.view(num_envs, 3, 1)).squeeze(-1).squeeze(-1)  # alignment of up axis for gripper
-    # reward for matching the orientation of the hand to the drawer (fingers wrapped)
-    rot_reward = 0.5 * (torch.sign(dot1) * dot1 ** 2 + torch.sign(dot2) * dot2 ** 2)
-
-    # bonus if left finger is above the drawer handle and right below
-    around_handle_reward = torch.zeros_like(rot_reward)
-    around_handle_reward = torch.where(baxter_lfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
-                                       torch.where(baxter_rfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
-                                                   around_handle_reward + 0.5, around_handle_reward), around_handle_reward)
-    # reward for distance of each finger from the drawer
-    finger_dist_reward = torch.zeros_like(rot_reward)
-    lfinger_dist = torch.abs(baxter_lfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
-    rfinger_dist = torch.abs(baxter_rfinger_pos[:, 2] - drawer_grasp_pos[:, 2])
-    finger_dist_reward = torch.where(baxter_grasp_pos[:, 0] < drawer_grasp_pos[:, 0] + 0.03,
-                                    torch.where(torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1]) < 0.07,
-                                        torch.where(baxter_lfinger_pos[:, 2] > drawer_grasp_pos[:, 2],
-                                            torch.where(baxter_rfinger_pos[:, 2] < drawer_grasp_pos[:, 2],
-                                                 (0.04 - lfinger_dist) + (0.04 - rfinger_dist), finger_dist_reward), finger_dist_reward), finger_dist_reward), finger_dist_reward)
-    
-    # regularization on the actions (summed for each environment)
-    action_penalty = torch.sum(actions ** 2, dim=-1)
-
-
-    # how far the cabinet has been opened out
-    open_reward = cabinet_dof_pos[:, 3]  # drawer_top_joint
-    
-    rewards = dist_reward_scale * dist_reward + rot_reward_scale * rot_reward \
-        + around_handle_reward_scale * around_handle_reward + open_reward_scale * open_reward \
-        + finger_dist_reward_scale * finger_dist_reward - action_penalty_scale * action_penalty
-
-    rewards = torch.where(open_reward > 0.35, rewards + 1,
-                          torch.where(open_reward > 0.2, rewards + 0.8,
-                                      torch.where(open_reward > 0.15, rewards + 0.65,
-                                                  torch.where(open_reward > 0.1, rewards + 0.5,
-                                                              torch.where(open_reward > 0.05, rewards + 0.35,
-                                                                          torch.where(open_reward > 0.01, rewards + 0.2,
-                                                                                      torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
-    print(len(finger_dist_reward[finger_dist_reward > 0.]))
-    # rewards = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-    #                       torch.ones_like(rewards) * -1, rewards)
-    # rewards = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-    #                       torch.ones_like(rewards) * -1, rewards)
-
-    # reset_buf = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-    #                         torch.ones_like(reset_buf), reset_buf)
-    # reset_buf = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
-    #                         torch.ones_like(reset_buf), reset_buf)
-                
-    # reset_buf = torch.where(open_reward > 0.35,
-    #                         torch.ones_like(reset_buf), reset_buf)
+    rewards = torch.where(torch.abs(baxter_grasp_pos - goal_buf[:, :3]).mean(keepdim=1) < 0.02 and torch.abs(cabinet_dof_pos[: ,3] - goal_buf[: ,3]) < 0.01, rewards + 1, rewards)
 
     reset_buf = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), reset_buf)
     return rewards, reset_buf

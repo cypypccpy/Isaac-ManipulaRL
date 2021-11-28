@@ -132,7 +132,17 @@ class VecTaskPython(VecTask):
 
         self.task.step(actions_tensor)
 
+        if self.task.use_her:
+            return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.goal_buf.to(self.rl_device), self.task.extras
+
         return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
+
+    def get_achieved_reward(self, achieved_goal, states):
+        rewards = torch.zeros_like(self.task.reset_buf)
+        rewards = torch.where(torch.abs(states[:, 9:12] - achieved_goal[:, :3]).mean(keepdim=1) < 0.02 and torch.abs(states[: ,3] - achieved_goal[: ,3]) < 0.01, rewards + 1, rewards)
+
+        rewards = torch.where(torch.abs(states[:, 9:12] - achieved_goal[:, :3]).mean(keepdim=1) < 0.02 and torch.abs(states[: ,3] - achieved_goal[: ,3]) < 0.01, rewards + 1, rewards)
+
 
     def reset(self):
         actions = 0.01 * (1 - 2 * torch.rand([self.task.num_envs, self.task.num_actions], dtype=torch.float32, device=self.rl_device))
