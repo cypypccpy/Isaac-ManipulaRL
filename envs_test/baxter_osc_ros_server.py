@@ -346,7 +346,7 @@ while not gym.query_viewer_has_closed(viewer):
     dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
     # solve damped least squares
     j_eef_T = torch.transpose(j_eef, 1, 2)
-    d = 0.05  # damping term
+    d = 0.1  # damping term
     lmbda = torch.eye(6).to('cpu') * (d ** 2)
     u = (j_eef_T @ torch.inverse(j_eef @ j_eef_T + lmbda) @ dpose).view(num_envs, 19, 1)
 
@@ -359,14 +359,14 @@ while not gym.query_viewer_has_closed(viewer):
         gripper_dof = to_torch([0.02, -0.02], device='cpu')
 
     if 60 >= pose_index >= 20:
-        dof_cabinet_pos[:, 3, :] += 0.0095
+        dof_cabinet_pos[:, 3, :] += 0.0000
 
     gripper_cabinet_dof = torch.cat((gripper_dof.unsqueeze(0).unsqueeze(-1), dof_cabinet_pos), dim = 1)
     pos_target = torch.cat((pos_target[:, :17, :], gripper_cabinet_dof), dim = 1)
 
     # Set tensor action
-    # if gripper_executed == True and itr % 1 == 0:
-    #     gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
+    if gripper_executed == True and itr % 1 == 0:
+        gym.set_dof_position_target_tensor(sim, gymtorch.unwrap_tensor(pos_target))
 
     if torch.abs(dpose).sum() < 0.01:
         if pose_index == 1:

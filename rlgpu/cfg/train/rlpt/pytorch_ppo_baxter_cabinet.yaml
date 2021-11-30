@@ -10,7 +10,7 @@ policy: # only works for MlpPolicy right now
 learn:
   agent_name: mynewtask_ppo
   test: False
-  resume: 0
+  resume: 660
   save_interval: 10 # check for potential saves every this many iterations
   print_log: True
 
@@ -26,7 +26,7 @@ learn:
   max_grad_norm: 1
   optim_stepsize: 3.e-4 # 3e-4 is default for single agent training with constant schedule
   schedule: fixed # could be adaptive or linear or fixed
-  gamma: 0.99
+  gamma: 0.998
   lam: 0.95
   init_noise_std: 1.0
 

@@ -43,9 +43,12 @@ class ActorCritic(nn.Module):
 
         return actions.detach()
 
-    # def act_inference(self, observations):
-    #     actions_mean = self.actor(observations)
-    #     return actions_mean
+    def act_inference(self, states):
+        mean, log_std = self.policy_net(states)
+
+        actions = torch.tanh(mean)
+
+        return actions.detach()
 
     def evaluate(self, states, epsilon=1e-6):
 

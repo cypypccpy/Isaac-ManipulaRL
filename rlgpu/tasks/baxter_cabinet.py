@@ -22,7 +22,7 @@ from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
 from .demostration import Demostration
-
+from .isaac_ros_server import joint_states_server
 
 class BaxterCabinet(BaseTask):
 
@@ -72,6 +72,8 @@ class BaxterCabinet(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
+        self.is_testing = True
+
         # Camera Sensor
         self.camera_props = gymapi.CameraProperties()
         self.camera_props.width = 128
@@ -97,7 +99,8 @@ class BaxterCabinet(BaseTask):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         # create some wrapper tensors for different slices
-        self.baxter_default_dof_pos = to_torch([0, 0, -1.57, 0, 2.5, 0, 0, 0, 0, 0, 1.2272, -1.3570,  0.0937,  2.2918,  0.6131, -1.0368,  1.2078,  0.0200, -0.0200], device=self.device)
+        self.baxter_default_dof_pos = to_torch([0, 0., -1.57, 0, 2.5, 0, 0, 0, 0, 0, 1.2272, -1.3570,  0.0937,  2.2918,  0.6131, -1.0368,  1.2078,  0.0200, -0.0200], device=self.device)
+        # self.baxter_default_dof_pos = to_torch([0, 0.08, -1, -1.19, 1.94, 0.67, 1.03, 0.5, 0.0200, -0.0200, 0.08, -1,  1.19,  1.94,  -0.67, 1.03, -0.5,  0.0200, -0.0200], device=self.device)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.baxter_dof_state = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_baxter_dofs]
         self.baxter_dof_pos = self.baxter_dof_state[..., 0]
@@ -507,7 +510,7 @@ class BaxterCabinet(BaseTask):
         self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 2:
+        if self.demostration_round < 1:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 
@@ -573,8 +576,13 @@ class BaxterCabinet(BaseTask):
 
             
             env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
-            self.gym.set_dof_position_target_tensor(self.sim,
-                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
+            # self.gym.set_dof_position_target_tensor(self.sim,
+            #                                         gymtorch.unwrap_tensor(self.baxter_dof_targets))
+            
+            # if self.is_testing:
+            #     joint_position = self.baxter_dof_targets[0, 10:17].cpu().detach().numpy().tolist()
+            #     joint_states_server(joint_position)
+            print(self.baxter_dof_pos[0, 10:17])
 
     def post_physics_step(self):
         self.progress_buf += 1

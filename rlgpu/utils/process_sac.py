@@ -25,10 +25,12 @@ def process_sac(args, env, cfg_train, logdir):
     sac = SAC(vec_env=env,
               actor_critic_class=ActorCritic,
               num_learning_epochs=learn_cfg["noptepochs"],
-              log_dir=logdir
+              log_dir=logdir,
+              is_testing=is_testing
               )
 
     if is_testing:
+        logdir = logdir + "_sac_660.pt_canuse"
         print("Loading model from {}/model_{}.pt".format(logdir, chkpt))
         sac.test("{}/model_{}.pt".format(logdir, chkpt))
     elif chkpt > 0:
