@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
-from .demostration import Demostration
+from .demonstration import Demonstration
 
 
 class BaxterCabinet(BaseTask):
@@ -79,9 +79,9 @@ class BaxterCabinet(BaseTask):
         self.camera_props.enable_tensors = True
         self.debug_fig = plt.figure("debug")
 
-        self.demostration = Demostration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
-        self.demostration_round = 0
-        self.demostration_step = 0
+        self.demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
+        self.demonstration_round = 0
+        self.demonstration_step = 0
 
         super().__init__(cfg=self.cfg)
 
@@ -512,22 +512,22 @@ class BaxterCabinet(BaseTask):
         
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
-        self.demostration_step = 0
-        self.demostration_round += 1
+        self.demonstration_step = 0
+        self.demonstration_round += 1
         self.catch[env_ids] = 0
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 1:
+        if self.demonstration_round < 1:
             self.actions = actions.clone().to(self.device)
-            self.demostration_step += 1
+            self.demonstration_step += 1
 
             # set demonstration===============================================================================================
-            if(self.demostration_step <= 50):
-                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(100 >= self.demostration_step > 50):
-                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(self.demostration_step > 100):
-                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(self.demonstration_step <= 50):
+                pos_err = - self.demonstration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(100 >= self.demonstration_step > 50):
+                pos_err = - (self.demonstration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(self.demonstration_step > 100):
+                pos_err = - (self.demonstration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             # set demonstration================================================================================================
             orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
@@ -543,7 +543,7 @@ class BaxterCabinet(BaseTask):
             self.baxter_dof_targets[:, :self.num_baxter_dofs] = self.baxter_dof_targets[:, :self.num_baxter_dofs] + u.squeeze(-1)
 
             # for i in range(self.num_envs):
-            #     if self.demostration_step < 100:
+            #     if self.demonstration_step < 100:
             #         self.baxter_dof_targets[i, 17] = 0.02
             #         self.baxter_dof_targets[i, 18] = -0.02
             #         self.gripper_flag = to_torch([1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
@@ -575,7 +575,7 @@ class BaxterCabinet(BaseTask):
             
             # self.reverse_actions = torch.cat([self.reverse_actions, self.gripper_flag], -1)
 
-            if self.demostration_step == 250:
+            if self.demonstration_step == 250:
                 self.reset_buf = torch.ones_like(self.reset_buf)
 
         else:

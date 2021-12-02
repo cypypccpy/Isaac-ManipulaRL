@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
-from .demostration import Demostration
+from .demonstration import Demonstration
 
 
 class BaxterCabinet(BaseTask):
@@ -79,7 +79,7 @@ class BaxterCabinet(BaseTask):
         self.camera_props.enable_tensors = True
         self.debug_fig = plt.figure("debug")
 
-        self.demostration = Demostration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
+        self.demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
         self.demostration_round = 0
         self.demostration_step = 0
 

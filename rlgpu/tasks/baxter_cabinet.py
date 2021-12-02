@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
-from .demostration import Demostration
+from .demonstration import Demonstration
 from .isaac_ros_server import joint_states_server
 
 class BaxterCabinet(BaseTask):
@@ -83,7 +83,7 @@ class BaxterCabinet(BaseTask):
 
         self.use_her = False
     
-        self.demostration = Demostration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
+        self.demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
         self.demostration_round = 0
         self.demostration_step = 0
 
@@ -99,7 +99,7 @@ class BaxterCabinet(BaseTask):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         # create some wrapper tensors for different slices
-        self.baxter_default_dof_pos = to_torch([0, 0., -1.57, 0, 2.5, 0, 0, 0, 0, 0, 1.2272, -1.3570,  0.0937,  2.2918,  0.6131, -1.0368,  1.2078,  0.0200, -0.0200], device=self.device)
+        self.baxter_default_dof_pos = to_torch([0, 0., -1.57, 0, 2.5, 0, 0, 0, 0, 0, 1.0, -0.8653,  0.0475,  1.8469,  0.4385, -1.0343,  1.3056, 0.0200, -0.0200], device=self.device)
         # self.baxter_default_dof_pos = to_torch([0, 0.08, -1, -1.19, 1.94, 0.67, 1.03, 0.5, 0.0200, -0.0200, 0.08, -1,  1.19,  1.94,  -0.67, 1.03, -0.5,  0.0200, -0.0200], device=self.device)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.baxter_dof_state = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_baxter_dofs]
@@ -248,7 +248,7 @@ class BaxterCabinet(BaseTask):
         baxter_start_pose.r = gymapi.Quat(0.0, 0.0, 1.0, 0.0)
 
         cabinet_start_pose = gymapi.Transform()
-        cabinet_start_pose.p = gymapi.Vec3(*get_axis_params(1.1, self.up_axis_idx))
+        cabinet_start_pose.p = gymapi.Vec3(0, 0, 0.9)
 
         # compute aggregate size
         num_baxter_bodies = self.gym.get_asset_rigid_body_count(baxter_asset)
@@ -510,17 +510,17 @@ class BaxterCabinet(BaseTask):
         self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 1:
+        if self.demostration_round < 2:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 
             # set demonstration===============================================================================================
             if(self.demostration_step <= 50):
-                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             if(100 >= self.demostration_step > 50):
-                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             if(self.demostration_step > 100):
-                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.436], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             # set demonstration================================================================================================
             orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
@@ -552,7 +552,7 @@ class BaxterCabinet(BaseTask):
             self.reverse_actions = (self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] - tem_dof[:, self.baxter_begin_dof:self.num_baxter_dofs]) / self.dt / self.action_scale
             
             # self.reverse_actions = torch.cat([self.reverse_actions, self.gripper_flag], -1)
-
+            # print(self.baxter_dof_targets[0, 1:self.num_baxter_dofs])
             if self.demostration_step == 250:
                 self.reset_buf = torch.ones_like(self.reset_buf)
 
@@ -576,13 +576,13 @@ class BaxterCabinet(BaseTask):
 
             
             env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
-            # self.gym.set_dof_position_target_tensor(self.sim,
-            #                                         gymtorch.unwrap_tensor(self.baxter_dof_targets))
-            
+            self.gym.set_dof_position_target_tensor(self.sim,
+                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
+            # print(self.baxter_dof_pos[0, 10:19].cpu().detach().numpy().tolist())
             # if self.is_testing:
-            #     joint_position = self.baxter_dof_targets[0, 10:17].cpu().detach().numpy().tolist()
+            #     joint_position = self.baxter_dof_pos[0, 10:19].cpu().detach().numpy().tolist()
             #     joint_states_server(joint_position)
-            print(self.baxter_dof_pos[0, 10:17])
+            # print(self.baxter_dof_pos[0, 10:17])
 
     def post_physics_step(self):
         self.progress_buf += 1

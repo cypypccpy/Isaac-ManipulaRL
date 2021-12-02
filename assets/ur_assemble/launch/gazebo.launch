@@ -1,0 +1,50 @@
+<launch>
+  <include
+    file="$(find gazebo_ros)/launch/empty_world.launch" />
+  <node
+    name="tf_footprint_base"
+    pkg="tf"
+    type="static_transform_publisher"
+    args="0 0 0 0 0 0 base_link base_footprint 40" />
+  <node
+    name="base_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/base.urdf -urdf -model base"
+    output="screen" />
+  <node
+    name="cap_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/cap.urdf -urdf -model cap"
+    output="screen" />
+  <node
+    name="shaft_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/shaft.urdf -urdf -model shaft"
+    output="screen" />
+  <node
+    name="camera_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/camera.urdf -urdf -model camera"
+    output="screen" />
+  <node
+    name="toolMount_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/toolMount.urdf -urdf -model toolMount"
+    output="screen" />
+  <node
+    name="workbench_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-file $(find ur_assemble)/urdf/workbench.urdf -urdf -model workbench"
+    output="screen" />
+  <node
+    name="fake_joint_calibration"
+    pkg="rostopic"
+    type="rostopic"
+    args="pub /calibrated std_msgs/Bool true" />
+</launch>

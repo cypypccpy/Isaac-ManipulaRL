@@ -11,7 +11,7 @@ def joint_states_server(joint_position):
     joint_states = JointState()
     joint_states.header = Header()
     joint_states.header.stamp = rospy.Time.now()
-    joint_states.name = ['right_s0', 'right_s1', 'right_e0', 'right_e1', 'right_w0', 'right_w1', 'right_w2']
+    joint_states.name = ['right_s0', 'right_s1', 'right_e0', 'right_e1', 'right_w0', 'right_w1', 'right_w2', 'lfinger', 'rfinger']
     joint_states.position = joint_position
     joint_states.velocity = []
     joint_states.effort = []

@@ -157,7 +157,7 @@ class SAC:
                         actions = self.actor_critic.act(states)
                     else:
                         actions = self.vec_env.get_reverse_actions()
-                        print(actions[0])
+                        # print(actions[0])
                         # actions = self.actor_critic.act(states)
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
