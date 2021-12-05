@@ -1,1 +1,1 @@
-from .network import ValueNet, PolicyNet, SoftQNet
+from .network import ValueNet, PolicyNet, SoftQNet, TwinNet

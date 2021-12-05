@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import MultivariateNormal
 from torchvision.models import squeezenet
-from utils.rl_pytorch.sac.mynetwork import ValueNet, PolicyNet, SoftQNet
+from utils.rl_pytorch.sac.mynetwork import ValueNet, PolicyNet, SoftQNet, TwinNet
 
 from einops import rearrange
 from einops.layers.torch import Rearrange, Reduce
@@ -26,6 +26,8 @@ class ActorCritic(nn.Module):
         self.policy_net = PolicyNet(obs_shape[0], actions_shape[0]).cuda()
         self.target_q1_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
         self.target_q2_net = SoftQNet(obs_shape[0], actions_shape[0]).cuda()
+
+        self.twin_net = TwinNet(3, 3).cuda()
 
         # Action noise
         self.log_std = nn.Parameter(np.log(initial_std) * torch.ones(*actions_shape))
@@ -63,6 +65,13 @@ class ActorCritic(nn.Module):
         log_prob = torch.sum(log_prob, dim=1, keepdim=True)
 
         return action, log_prob
+
+    def act_abstract_states(self, states, force):
+        abs_states = self.twin_net(states, force)
+
+        abs_states = torch.softmax(abs_states, dim = 1)
+
+        return abs_states
 
 
 def get_activation(act_name):

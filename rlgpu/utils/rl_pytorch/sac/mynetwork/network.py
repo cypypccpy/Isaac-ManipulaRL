@@ -69,6 +69,18 @@ class PolicyNet(nn.Module):
         log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         return mean, log_std
 
+class TwinNet(nn.Module):
+    def __init__(self, state_dim, force_dim, edge=3e-3):
+        super(TwinNet, self).__init__()
+        self.linear1 = nn.Linear(force_dim, 64)
+        self.linear2 = nn.Linear(64, 64)
+        self.linear3 = nn.Linear(64, 2)
 
+    def forward(self, state, force):
+        x = F.relu(self.linear1(force))
+        x = F.relu(self.linear2(x))
+        x = self.linear3(x)
+
+        return x
 
         

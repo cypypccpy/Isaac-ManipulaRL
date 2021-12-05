@@ -46,4 +46,46 @@ sim:
     relaxation: 0.75
   
 task:
-  randomize: False
+  randomize: True
+  randomization_params:
+      frequency: 500  # Define how many frames between generating new randomizations
+      observations:
+          range: [0, .05]
+          operation: "additive"
+          distribution: "uniform"
+          schedule: "constant"  # turn on noise after `schedule_steps` num steps
+          schedule_steps: 5000
+      actions:
+          range: [0., .05]
+          operation: "additive"
+          distribution: "uniform"
+          schedule: "linear"  # linearly interpolate between 0 randomization and full range
+          schedule_steps: 5000
+      actor_params:
+          cabinet:
+              rigid_body_properties:
+                  mass:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+              rigid_shape_properties:
+                  friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  rolling_friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  torsion_friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  restitution:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  compliance:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"

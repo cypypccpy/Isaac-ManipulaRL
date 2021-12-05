@@ -127,6 +127,10 @@ class VecTaskPython(VecTask):
         # return self.task.reverse_actions.to(self.rl_device)
         return torch.clamp(self.task.reverse_actions.to(self.rl_device), -self.clip_actions, self.clip_actions)
 
+    def get_twin_module_data(self):
+
+        return self.task.domain_para_buf.to(self.rl_device), self.task.force_buf.to(self.rl_device)
+
     def step(self, actions):
         actions_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
 

@@ -1,3 +1,4 @@
+from abc import abstractclassmethod
 from datetime import datetime
 import os
 import time
@@ -89,6 +90,8 @@ class SAC:
         self.q2_optimizer = optim.Adam(self.actor_critic.q2_net.parameters(), lr=q_lr)
         self.policy_optimizer = optim.Adam(self.actor_critic.policy_net.parameters(), lr=policy_lr)
 
+        self.twin_optimizer = optim.Adam(self.actor_critic.twin_net.parameters(), lr=policy_lr)
+
         self.buffer = ReplayBeffer(self.replay_buffer_len, self.demonstration_buffer_len)
         # hyperparameters
         self.gamma = gamma
@@ -99,6 +102,9 @@ class SAC:
         # self.alpha = torch.tensor((1,), dtype=torch.float32,
         #                         requires_grad=True, device=self.device)  # trainable parameter
         self.alpha_optimizer = torch.optim.Adam((self.alpha_log,), lr=learning_rate)
+
+        self.abstract_states = torch.tensor(([0, 0],), dtype=torch.float32,
+                                requires_grad=True, device=self.device)
 
         self.batch_size = batch_size
         self.criterion = torch.nn.SmoothL1Loss()
@@ -138,9 +144,15 @@ class SAC:
                     actions = self.actor_critic.act_inference(current_obs)
                     # Step the vec_environment
                     next_obs, rews, dones, infos = self.vec_env.step(actions)
+
+                    domain_para, force = self.vec_env.get_twin_module_data()
+                    self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
+
+                    print(self.abstract_states[0])
                     current_obs.copy_(next_obs)
         else:
             Return = []
+            last_score_mean = 0
             action_range = torch.Tensor([self.action_space.low, self.action_space.high]).to('cuda:0')
             states = current_obs
 
@@ -162,6 +174,7 @@ class SAC:
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
                     next_states, reward, done, _ = self.vec_env.step(actions)
+                    domain_para, force = self.vec_env.get_twin_module_data()
                     # implement reward scale
                     reward *= self.reward_scale
 
@@ -176,16 +189,32 @@ class SAC:
                     #     break
                     if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
+                        self.update_twin_module(states, domain_para, force)
                     
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
                 self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
-                Return.append(score)
+                self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
+
+                if score.mean() >= last_score_mean:
+                    self.save(os.path.join(self.log_dir, 'model_best.pt'.format(it)))
+                last_score_mean = score.mean()
                 score = 0
-                
+
                 if it % log_interval == 0:
                     self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(it)))
             self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(num_learning_iterations)))
+
+    def update_twin_module(self, states, domain_para, force):
+        useful_state = states[:, 9:12]
+        
+        self.abstract_states = self.actor_critic.act_abstract_states(useful_state, force)
+
+        self.twin_loss = self.criterion(domain_para, self.abstract_states)
+
+        self.twin_optimizer.zero_grad()
+        self.twin_loss.backward()
+        self.twin_optimizer.step()
 
     def update(self, batch_size):
         
@@ -335,3 +364,4 @@ class SAC:
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
         self.policy_optimizer.step()
+

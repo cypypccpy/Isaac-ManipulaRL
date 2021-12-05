@@ -274,7 +274,7 @@ class UR5Package(BaseTask):
         self.ur3_dof_speed_scales = torch.ones_like(self.ur3_dof_lower_limits)
 
         ur3_start_pose = gymapi.Transform()
-        ur3_start_pose.p = gymapi.Vec3(0.48, -1.4, 0.77)
+        ur3_start_pose.p = gymapi.Vec3(1.48, -1.4, 1.77)
         ur3_start_pose.r = gymapi.Quat.from_euler_zyx(-1 * math.pi, 1 * math.pi, 0)
 
         base_start_pose = gymapi.Transform()
@@ -500,9 +500,8 @@ class UR5Package(BaseTask):
         self.demonstration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demonstration_round < 2:
+        if self.demonstration_round < 20:
             self.actions = actions.clone().to(self.device)
-            self.demonstration_step += 1
 
             # set demonstration by hand
             # if(self.demonstration_step <= 75):
@@ -511,21 +510,28 @@ class UR5Package(BaseTask):
             #     pos_err = - (self.demonstration_step - 75) / 75 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.26, 0.03, 0.2], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
 
             # set demonstration by datafile
-            pos_orn_err = self.demonstration.get_dof_pos(self.demonstration_step + 1) - self.demonstration.get_dof_pos(self.demonstration_step)
-            pos_err = pos_orn_err[:3].float().to(self.device).repeat((self.num_envs, 1))
+            # pos_orn_err = self.demonstration.get_dof_pos(self.demonstration_step + 1) - self.demonstration.get_dof_pos(self.demonstration_step)
+            pos_orn_err = self.demonstration.get_dof_pos(0)
 
-            # pos_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
+            # pos_err = pos_orn_err[:3].float().to(self.device).repeat((self.num_envs, 1)) * 1000
+            pos_cur = self.rigid_body_states[:, self.gripper_handle][:, :3] - to_torch([1.48, -1.4, 1.77], device=self.device).repeat((self.num_envs, 1))
+            pos_err = self.demonstration.get_dof_pos(0)[:3].repeat((self.num_envs, 1)).to(self.device) - pos_cur
+            pos_err = pos_err.float()
+            print(pos_cur)
+
+            # orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
             orn_des = quat_from_euler_xyz(pos_orn_err[3], pos_orn_err[4], pos_orn_err[5]).repeat((self.num_envs, 1)).to(self.device)
-            orn_cur = self.rigid_body_states[:, self.base_handle][:, 3:7]
-
+            
+            orn_cur = self.rigid_body_states[:, self.gripper_handle][:, 3:7]
+            print(get_euler_xyz(orn_cur))
             orn_err = orientation_error(orn_des,orn_cur).float()
-            print(orn_err[0])
+
             dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
 
             # solve damped least squares
             j_eef_T = torch.transpose(self.j_eef, 1, 2)
-            d = 0.5  # damping term
+            d = 5  # damping term
             lmbda = torch.eye(6).to('cuda:0') * (d ** 2)
             u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 7, 1)
 
@@ -537,8 +543,9 @@ class UR5Package(BaseTask):
 
             # reverse inference action
             self.reverse_actions = pos_err / self.dt / self.action_scale
+            
             # self.reverse_actions[:, 2] += 0.5
-
+            self.demonstration_step += 1
             print(self.demonstration_step)
             if self.demonstration_step == self.demonstration.step_size - 1:
                 self.reset_buf = torch.ones_like(self.reset_buf)

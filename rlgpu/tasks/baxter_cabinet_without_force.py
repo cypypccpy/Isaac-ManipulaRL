@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from inspect import formatargspec
 from pickle import EMPTY_TUPLE
 from einops.einops import rearrange
 import numpy as np
@@ -73,8 +72,6 @@ class BaxterCabinet(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
-        self.randomization_params = self.cfg["task"]["randomization_params"]
-
         self.is_testing = True
 
         # Camera Sensor
@@ -96,9 +93,6 @@ class BaxterCabinet(BaseTask):
         actor_root_state_tensor = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         rigid_body_tensor = self.gym.acquire_rigid_body_state_tensor(self.sim)
-        _fsdata = self.gym.acquire_force_sensor_tensor(self.sim)
-
-        self.fsdata = gymtorch.wrap_tensor(_fsdata)
 
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_dof_state_tensor(self.sim)
@@ -288,11 +282,7 @@ class BaxterCabinet(BaseTask):
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             baxter_actor = self.gym.create_actor(env_ptr, baxter_asset, baxter_start_pose, "baxter", i, 1, 0)
-            sensor_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
-            sensor_pose = gymapi.Transform(gymapi.Vec3(0.0, 0.0, 0.0))
-
-            sensor = self.gym.create_force_sensor(env_ptr, sensor_handle, sensor_pose)
-
+            
             # Set initial DOF states
             self.gym.set_actor_dof_states(env_ptr, baxter_actor, self.default_dof_state, gymapi.STATE_ALL)
             
@@ -427,7 +417,6 @@ class BaxterCabinet(BaseTask):
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_jacobian_tensors(self.sim)
-        self.gym.refresh_force_sensor_tensor(self.sim)
 
         self.hand_pos = self.rigid_body_states[:, self.hand_handle][:, 0:3]
         self.hand_rot = self.rigid_body_states[:, self.hand_handle][:, 3:7]        
@@ -455,18 +444,6 @@ class BaxterCabinet(BaseTask):
         # num: 12 + 12 + 3 + 1 + 1
         self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:19], to_target,
                                   self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
-        
-        self.force_buf = torch.zeros_like(self.fsdata)[:, :3]
-        self.force_buf[:, 0] = torch.where(self.fsdata[:, 0] > 0, torch.ones_like(self.force_buf[:, 0]), torch.ones_like(self.force_buf[:, 0]) * -1)
-        self.force_buf[:, 1] = torch.where(self.fsdata[:, 1] > 0, torch.ones_like(self.force_buf[:, 1]), torch.ones_like(self.force_buf[:, 1]) * -1)
-        self.force_buf[:, 2] = torch.where(self.fsdata[:, 2] > 0, torch.ones_like(self.force_buf[:, 2]), torch.ones_like(self.force_buf[:, 2]) * -1)
-        # print(self.force_buf[0])
-
-        self.domain_para_buf = torch.zeros_like(to_target[:, 0:2])
-        self.domain_para_buf[:, 0] = torch.where(to_target[:, 0] > -0.03, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
-        self.domain_para_buf[:, 1] = torch.where(to_target[:, 0] < -0.03, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
-
-        print(self.fsdata[0, :3])
 
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
@@ -495,8 +472,7 @@ class BaxterCabinet(BaseTask):
 
     def reset(self, env_ids):
         env_ids_int32 = env_ids.to(dtype=torch.int32)
-        self.apply_randomizations(self.randomization_params)
-        
+
         # reset baxter
         pos = tensor_clamp(
             # self.baxter_default_dof_pos.unsqueeze(0) + 0.25 * (torch.rand((len(env_ids), self.num_baxter_dofs), device=self.device) - 0.5),
@@ -540,11 +516,11 @@ class BaxterCabinet(BaseTask):
 
             # set demonstration===============================================================================================
             if(self.demostration_step <= 50):
-                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.0, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             if(100 >= self.demostration_step > 50):
-                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.0, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             if(self.demostration_step > 100):
-                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.0, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             # set demonstration================================================================================================
             orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
@@ -610,7 +586,6 @@ class BaxterCabinet(BaseTask):
 
     def post_physics_step(self):
         self.progress_buf += 1
-        self.randomize_buf += 1
 
         env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(env_ids) > 0:
@@ -744,7 +719,7 @@ def compute_baxter_reward(
                                                               torch.where(open_reward > 0.05, rewards + 0.35,
                                                                           torch.where(open_reward > 0.01, rewards + 0.2,
                                                                                       torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
-    # print(len(finger_dist_reward[finger_dist_reward > 0.]))
+    print(len(finger_dist_reward[finger_dist_reward > 0.]))
     # rewards = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
     #                       torch.ones_like(rewards) * -1, rewards)
     # rewards = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
