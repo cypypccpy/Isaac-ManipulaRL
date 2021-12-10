@@ -11,7 +11,6 @@ import os
 
 from isaacgym import gymtorch
 from isaacgym import gymapi
-from isaacgym import gymutil
 from rlgpu.utils.torch_jit_utils import *
 from tasks.base.base_task import BaseTask
 import torch
@@ -309,11 +308,6 @@ class UR5Package(BaseTask):
         self.shaft_poses = []
         self.lfinger_poses = []
         self.rfinger_poses = []
-        self.attractor_handles = []
-        attractor_properties = gymapi.AttractorProperties()
-        attractor_properties.stiffness = ur3_dof_stiffness[-1]
-        attractor_properties.damping = ur3_dof_stiffness[-1]
-        attractor_properties.axes = gymapi.AXIS_ALL
 
         for i in range(self.num_envs):
             # create env instance
@@ -323,21 +317,6 @@ class UR5Package(BaseTask):
 
             ur3_actor = self.gym.create_actor(env_ptr, ur3_asset, ur3_start_pose, "ur3", 0, 0, 0)
             self.gym.set_actor_dof_properties(env_ptr, ur3_actor, ur3_dof_props)
-
-            props = self.gym.get_actor_rigid_body_states(env_ptr, ur3_actor, gymapi.STATE_POS)
-            body_dict = self.gym.get_actor_rigid_body_dict(env_ptr, ur3_actor)
-            hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr,  ur3_actor, "gripper_link")
-
-            # Initialize the attractor
-            attractor_properties.target = props['pose'][:][body_dict["gripper_link"]]
-            attractor_properties.rigid_handle = hand_handle
-
-            # Draw axes and sphere at attractor location
-            # gymutil.draw_lines(axes_geom, gym, viewer, env, attractor_properties.target)
-            # gymutil.draw_lines(sphere_geom, gym, viewer, env, attractor_properties.target)
-
-            attractor_handle = self.gym.create_rigid_body_attractor(env_ptr, attractor_properties)
-            self.attractor_handles.append(attractor_handle)
 
             base_pose = base_start_pose
             base_actor = self.gym.create_actor(env_ptr, base_asset, base_pose, "base", 0, 0, 0)
@@ -531,46 +510,39 @@ class UR5Package(BaseTask):
             #     pos_err = - (self.demonstration_step - 75) / 75 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.26, 0.03, 0.2], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
 
             # set demonstration by datafile
-            pos_orn_err = self.demonstration.get_dof_pos(self.demonstration_step + 1) - self.demonstration.get_dof_pos(self.demonstration_step)
+            # pos_orn_err = self.demonstration.get_dof_pos(self.demonstration_step + 1) - self.demonstration.get_dof_pos(self.demonstration_step)
+            pos_orn_err = self.demonstration.get_dof_pos(0)
 
             # pos_err = pos_orn_err[:3].float().to(self.device).repeat((self.num_envs, 1)) * 1000
-            # pos_cur = self.rigid_body_states[:, self.gripper_handle][:, :3] - to_torch([1.48, -1.4, 1.77], device=self.device).repeat((self.num_envs, 1))
-            # pos_err = self.demonstration.get_dof_pos(0)[:3].repeat((self.num_envs, 1)).to(self.device) - pos_cur
-            orn_err = self.demonstration.get_dof_pos(self.demonstration_step + 1)
-            orn_des = quat_from_euler_xyz(orn_err[3],orn_err[4], orn_err[5])
-            
-            for i in range(self.num_envs):
-                attractor_properties = self.gym.get_attractor_properties(self.envs[i], self.attractor_handles[i])
-                pose = attractor_properties.target
-                pose.p += gymapi.Vec3(pos_orn_err[0], pos_orn_err[1], pos_orn_err[2])
-                # pose.r = gymapi.Quat(orn_des[0], orn_des[1],orn_des[2], orn_des[3])
-                print(pose.r)
-                # pose.r += 
-
-                self.gym.set_attractor_target(self.envs[i], self.attractor_handles[i], pose)
+            pos_cur = self.rigid_body_states[:, self.gripper_handle][:, :3] - to_torch([1.48, -1.4, 1.77], device=self.device).repeat((self.num_envs, 1))
+            pos_err = self.demonstration.get_dof_pos(0)[:3].repeat((self.num_envs, 1)).to(self.device) - pos_cur
+            pos_err = pos_err.float()
+            print(pos_cur)
 
             # orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
+
+            orn_des = quat_from_euler_xyz(pos_orn_err[3], pos_orn_err[4], pos_orn_err[5]).repeat((self.num_envs, 1)).to(self.device)
             
-            # orn_cur = self.rigid_body_states[:, self.gripper_handle][:, 3:7]
-            # print(get_euler_xyz(orn_cur))
-            # orn_err = orientation_error(orn_des,orn_cur).float()
+            orn_cur = self.rigid_body_states[:, self.gripper_handle][:, 3:7]
+            print(get_euler_xyz(orn_cur))
+            orn_err = orientation_error(orn_des,orn_cur).float()
 
-            # dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
+            dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
 
-            # # solve damped least squares
-            # j_eef_T = torch.transpose(self.j_eef, 1, 2)
-            # d = 5  # damping term
-            # lmbda = torch.eye(6).to('cuda:0') * (d ** 2)
-            # u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 7, 1)
+            # solve damped least squares
+            j_eef_T = torch.transpose(self.j_eef, 1, 2)
+            d = 5  # damping term
+            lmbda = torch.eye(6).to('cuda:0') * (d ** 2)
+            u = (j_eef_T @ torch.inverse(self.j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 7, 1)
 
-            # # update position targets
-            # self.ur3_dof_targets[:, :self.num_ur3_dofs] = self.ur3_dof_targets[:, :self.num_ur3_dofs] + u.squeeze(-1)
+            # update position targets
+            self.ur3_dof_targets[:, :self.num_ur3_dofs] = self.ur3_dof_targets[:, :self.num_ur3_dofs] + u.squeeze(-1)
 
-            # self.gym.set_dof_position_target_tensor(self.sim,
-            #                                         gymtorch.unwrap_tensor(self.ur3_dof_targets))
+            self.gym.set_dof_position_target_tensor(self.sim,
+                                                    gymtorch.unwrap_tensor(self.ur3_dof_targets))
 
-            # # reverse inference action
-            self.reverse_actions = self.rigid_body_states[:, self.gripper_handle][:, :3] / self.dt / self.action_scale
+            # reverse inference action
+            self.reverse_actions = pos_err / self.dt / self.action_scale
             
             # self.reverse_actions[:, 2] += 0.5
             self.demonstration_step += 1

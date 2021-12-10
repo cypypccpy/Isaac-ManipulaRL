@@ -57,11 +57,10 @@ class ActorCritic(nn.Module):
         mean, log_std = self.policy_net(states)
         std = log_std.exp()
         normal = Normal(mean, std)
-        noise = Normal(0, 1)
+        noise = torch.randn_like(mean, requires_grad=True)
 
-        z = noise.sample()
-        action = torch.tanh(mean + std * z.cuda())
-        log_prob = normal.log_prob(mean + std * z.cuda()) - torch.log(1 - action.pow(2) + epsilon)
+        action = torch.tanh(mean + std * noise)
+        log_prob = normal.log_prob(mean + std * noise) - torch.log(1 - action.pow(2) + epsilon)
         log_prob = torch.sum(log_prob, dim=1, keepdim=True)
 
         return action, log_prob

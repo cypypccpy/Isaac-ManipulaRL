@@ -24,14 +24,14 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                 demonstration_buffer_len = 50000,
+                 demonstration_buffer_len = 60000,
                  replay_buffer_len = 1000000,
-                 gamma=0.99,
+                 gamma=0.995,
                  init_noise_std=1.0,
                  learning_rate=3e-4,
                  tau = 0.005,
                  alpha = 4,
-                 reward_scale = 0.5,
+                 reward_scale = 1,
                  batch_size = 256,
                  schedule="fixed",
                  desired_kl=None,
@@ -148,7 +148,7 @@ class SAC:
                     domain_para, force = self.vec_env.get_twin_module_data()
                     self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
 
-                    print(self.abstract_states[0])
+                    # print(self.abstract_states[0])
                     current_obs.copy_(next_obs)
         else:
             Return = []
@@ -169,12 +169,12 @@ class SAC:
                         actions = self.actor_critic.act(states)
                     else:
                         actions = self.vec_env.get_reverse_actions()
-                        # print(actions[0])
+                        print(actions[0])
                         # actions = self.actor_critic.act(states)
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
                     next_states, reward, done, _ = self.vec_env.step(actions)
-                    domain_para, force = self.vec_env.get_twin_module_data()
+                    # domain_para, force = self.vec_env.get_twin_module_data()
                     # implement reward scale
                     reward *= self.reward_scale
 
@@ -189,12 +189,12 @@ class SAC:
                     #     break
                     if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
-                        self.update_twin_module(states, domain_para, force)
+                        # self.update_twin_module(states, domain_para, force)
                     
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
                 self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
-                self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
+                # self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
 
                 if score.mean() >= last_score_mean:
                     self.save(os.path.join(self.log_dir, 'model_best.pt'.format(it)))

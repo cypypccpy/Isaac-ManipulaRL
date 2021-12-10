@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from inspect import formatargspec
 from pickle import EMPTY_TUPLE
 from einops.einops import rearrange
 import numpy as np
@@ -22,7 +23,7 @@ from PIL import Image as Im
 import math
 from einops.layers.torch import Rearrange, Reduce
 from .demonstration import Demonstration
-from .isaac_ros_server import joint_states_server
+from .isaac_ros_server import isaac_ros_server
 
 class BaxterCabinet(BaseTask):
 
@@ -62,7 +63,7 @@ class BaxterCabinet(BaseTask):
         self.prop_spacing = 0.09
 
         self.num_obs = 13
-        self.num_acts = 9
+        self.num_acts = 8
         self.baxter_begin_dof = 10
 
         self.cfg["env"]["numObservations"] = self.num_obs
@@ -72,7 +73,10 @@ class BaxterCabinet(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
-        self.is_testing = True
+        self.randomization_params = self.cfg["task"]["randomization_params"]
+
+        self.is_test = False
+        self.abnormal_state = False
 
         # Camera Sensor
         self.camera_props = gymapi.CameraProperties()
@@ -86,6 +90,9 @@ class BaxterCabinet(BaseTask):
         self.demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/envs_test/npresult1.txt')
         self.demostration_round = 0
         self.demostration_step = 0
+        
+        if self.is_test:
+            self.isaac_ros_server = isaac_ros_server()
 
         super().__init__(cfg=self.cfg)
 
@@ -93,6 +100,9 @@ class BaxterCabinet(BaseTask):
         actor_root_state_tensor = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         rigid_body_tensor = self.gym.acquire_rigid_body_state_tensor(self.sim)
+        _fsdata = self.gym.acquire_force_sensor_tensor(self.sim)
+
+        self.fsdata = gymtorch.wrap_tensor(_fsdata)
 
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_dof_state_tensor(self.sim)
@@ -248,7 +258,7 @@ class BaxterCabinet(BaseTask):
         baxter_start_pose.r = gymapi.Quat(0.0, 0.0, 1.0, 0.0)
 
         cabinet_start_pose = gymapi.Transform()
-        cabinet_start_pose.p = gymapi.Vec3(0, 0, 0.9)
+        cabinet_start_pose.p = gymapi.Vec3(0, 0, 0.87)
 
         # compute aggregate size
         num_baxter_bodies = self.gym.get_asset_rigid_body_count(baxter_asset)
@@ -282,7 +292,11 @@ class BaxterCabinet(BaseTask):
                 self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
             baxter_actor = self.gym.create_actor(env_ptr, baxter_asset, baxter_start_pose, "baxter", i, 1, 0)
-            
+            sensor_handle = self.gym.find_actor_rigid_body_handle(env_ptr, baxter_actor, "right_wrist")
+            sensor_pose = gymapi.Transform(gymapi.Vec3(0.0, 0.0, 0.0))
+
+            sensor = self.gym.create_force_sensor(env_ptr, sensor_handle, sensor_pose)
+
             # Set initial DOF states
             self.gym.set_actor_dof_states(env_ptr, baxter_actor, self.default_dof_state, gymapi.STATE_ALL)
             
@@ -417,6 +431,7 @@ class BaxterCabinet(BaseTask):
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_jacobian_tensors(self.sim)
+        self.gym.refresh_force_sensor_tensor(self.sim)
 
         self.hand_pos = self.rigid_body_states[:, self.hand_handle][:, 0:3]
         self.hand_rot = self.rigid_body_states[:, self.hand_handle][:, 3:7]        
@@ -444,6 +459,20 @@ class BaxterCabinet(BaseTask):
         # num: 12 + 12 + 3 + 1 + 1
         self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:19], to_target,
                                   self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
+        
+        self.force_buf = torch.zeros_like(self.fsdata)[:, :3]
+        self.force_buf[:, 0] = torch.where(self.fsdata[:, 0] > 0, torch.ones_like(self.force_buf[:, 0]), torch.ones_like(self.force_buf[:, 0]) * -1)
+        self.force_buf[:, 1] = torch.where(self.fsdata[:, 1] > 0, torch.ones_like(self.force_buf[:, 1]), torch.ones_like(self.force_buf[:, 1]) * -1)
+        self.force_buf[:, 2] = torch.where(self.fsdata[:, 2] > 0, torch.ones_like(self.force_buf[:, 2]), torch.ones_like(self.force_buf[:, 2]) * -1)
+        # print(self.force_buf[0])
+
+        self.domain_para_buf = torch.zeros_like(to_target[:, 0:2])
+        self.domain_para_buf[:, 0] = torch.where(self.cabinet_dof_pos[:, 3] > 0.01, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
+        self.domain_para_buf[:, 1] = torch.where(self.cabinet_dof_pos[:, 3] < 0.01, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
+
+        if abs(self.baxter_lfinger_pos[0, 2]- self.drawer_grasp_pos[0, 2]) < 0.02 and abs(self.baxter_lfinger_pos[0, 2] - self.drawer_grasp_pos[0, 2]) < 0.02:
+            print(1)
+            # self.abnormal_state = True
 
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
@@ -472,7 +501,8 @@ class BaxterCabinet(BaseTask):
 
     def reset(self, env_ids):
         env_ids_int32 = env_ids.to(dtype=torch.int32)
-
+        self.apply_randomizations(self.randomization_params)
+        
         # reset baxter
         pos = tensor_clamp(
             # self.baxter_default_dof_pos.unsqueeze(0) + 0.25 * (torch.rand((len(env_ids), self.num_baxter_dofs), device=self.device) - 0.5),
@@ -502,7 +532,7 @@ class BaxterCabinet(BaseTask):
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(multi_env_ids_int32), len(multi_env_ids_int32))
 
-        self.reverse_actions = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs]
+        self.reverse_actions = self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs][:, :8]
         
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
@@ -516,11 +546,11 @@ class BaxterCabinet(BaseTask):
 
             # set demonstration===============================================================================================
             if(self.demostration_step <= 50):
-                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(100 >= self.demostration_step > 50):
-                pos_err = - (self.demostration_step - 50) / 200 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
-            if(self.demostration_step > 100):
-                pos_err = - (self.demostration_step - 100) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.04, 1.236], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+                pos_err = - self.demostration_step / 500 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.7, 0.0, 1.206], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(150 >= self.demostration_step > 50):
+                pos_err = - (self.demostration_step - 50) / 1000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([0.605, 0.0, 1.206], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
+            if(self.demostration_step > 150):
+                pos_err = - (self.demostration_step - 150) / 2000 * (self.rigid_body_states[:, self.hand_handle][:, :3] - to_torch([1, 0.0, 1.206], dtype=torch.float, device=self.device).repeat((self.num_envs, 1)))
             # set demonstration================================================================================================
             orn_err = to_torch([0, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
 
@@ -536,56 +566,64 @@ class BaxterCabinet(BaseTask):
             tem_dof = self.baxter_dof_targets[:, :self.num_baxter_dofs].clone().to(self.device)
             self.baxter_dof_targets[:, :self.num_baxter_dofs] = self.baxter_dof_targets[:, :self.num_baxter_dofs] + u.squeeze(-1)
 
-            self.gym.set_dof_position_target_tensor(self.sim,
-                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
-
             for i in range(self.num_envs):
-                if self.demostration_step < 100:
+                if self.demostration_step < 150:
                     self.baxter_dof_targets[i, 17] = 0.02
                     self.baxter_dof_targets[i, 18] = -0.02
+                    self.reverse_actions[:, 7] = 1
 
                 else:
                     self.baxter_dof_targets[i, 17] = 0.0
                     self.baxter_dof_targets[i, 18] = 0.0
+                    self.reverse_actions[:, 7] = -1
 
             # reverse inference action
-            self.reverse_actions = (self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] - tem_dof[:, self.baxter_begin_dof:self.num_baxter_dofs]) / self.dt / self.action_scale
+            self.gym.set_dof_position_target_tensor(self.sim,
+                                        gymtorch.unwrap_tensor(self.baxter_dof_targets))
+            self.reverse_actions[:, :7] = ((self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs] - tem_dof[:, self.baxter_begin_dof:self.num_baxter_dofs]) / self.dt / self.action_scale)[:, :7]
             
             # self.reverse_actions = torch.cat([self.reverse_actions, self.gripper_flag], -1)
             # print(self.baxter_dof_targets[0, 1:self.num_baxter_dofs])
-            if self.demostration_step == 250:
+            if self.demostration_step == 300:
                 self.reset_buf = torch.ones_like(self.reset_buf)
 
         else:
             self.actions = actions.clone().to(self.device)
 
-            targets = self.baxter_dof_targets[:, self.baxter_begin_dof:19] + self.dt * self.actions[:, :9] * self.action_scale
-            self.baxter_dof_targets[:, self.baxter_begin_dof:19] = tensor_clamp(
-                targets, self.baxter_dof_lower_limits[self.baxter_begin_dof:19], self.baxter_dof_upper_limits[self.baxter_begin_dof:19])
+            targets = self.baxter_dof_targets[:, self.baxter_begin_dof:17] + self.dt * self.actions[:, :7] * self.action_scale
+            self.baxter_dof_targets[:, self.baxter_begin_dof:17] = tensor_clamp(
+                targets, self.baxter_dof_lower_limits[self.baxter_begin_dof:17], self.baxter_dof_upper_limits[self.baxter_begin_dof:17])
             
-            # for i in range(self.num_envs):
-            #     if self.actions[i, 7] > 0.0:
-            #         self.baxter_dof_targets[i, 17] = 0.02
-            #         self.baxter_dof_targets[i, 18] = -0.02
-            #         self.gripper_flag = to_torch([1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
-
-            #     else:
-            #         self.baxter_dof_targets[i, 17] = 0.0
-            #         self.baxter_dof_targets[i, 18] = 0.0
-            #         self.gripper_flag = to_torch([-1], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
+            for i in range(self.num_envs):
+                self.baxter_dof_targets[i, 17] = 0.0208 * (self.actions[i, 7] + 1) / 2
+                self.baxter_dof_targets[i, 18] = -0.0208 * (self.actions[i, 7] + 1) / 2
 
             
             env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
             self.gym.set_dof_position_target_tensor(self.sim,
                                                     gymtorch.unwrap_tensor(self.baxter_dof_targets))
-            # print(self.baxter_dof_pos[0, 10:19].cpu().detach().numpy().tolist())
-            # if self.is_testing:
-            #     joint_position = self.baxter_dof_pos[0, 10:19].cpu().detach().numpy().tolist()
-            #     joint_states_server(joint_position)
+
+            if self.is_test:
+                if self.abnormal_state:
+                    self.baxter_dof_targets[:, 17] = 0.02
+                    self.baxter_dof_targets[:, 18] = -0.02
+                    self.gym.set_dof_position_target_tensor(self.sim,
+                                                            gymtorch.unwrap_tensor(self.baxter_dof_targets))
+                    cabinet_indices = self.global_indices[:, 1].flatten()
+                    self.root_state_tensor[:, 1, 2] += 0.01
+
+                    self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                                gymtorch.unwrap_tensor(self.root_state_tensor),
+                                                                gymtorch.unwrap_tensor(cabinet_indices), len(cabinet_indices))
+                    self.abnormal_state = False
+
+                joint_position = self.baxter_dof_targets[0, 10:19].cpu().detach().numpy().tolist()
+                self.isaac_ros_server.joint_states_server(joint_position)
             # print(self.baxter_dof_pos[0, 10:17])
 
     def post_physics_step(self):
         self.progress_buf += 1
+        self.randomize_buf += 1
 
         env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(env_ids) > 0:
@@ -673,7 +711,7 @@ def compute_baxter_reward(
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, float, float, float, float, float, float, float, float) -> Tuple[Tensor, Tensor]
 
     # distance from hand to the drawer
-    dist_reward = 0.2 - torch.abs(baxter_grasp_pos[:, 2] - drawer_grasp_pos[:, 2]) + 0.4 - 2 * torch.abs(baxter_grasp_pos[:, 0] - drawer_grasp_pos[:, 0]) + 0.2 - torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1])
+    dist_reward = 0.2 - torch.abs(baxter_grasp_pos[:, 2] - drawer_grasp_pos[:, 2]) + 0.4 - 2 * torch.abs(baxter_grasp_pos[:, 0] - drawer_grasp_pos[:, 0]+ 0.04) + 0.2 - torch.abs(baxter_grasp_pos[:, 1] - drawer_grasp_pos[:, 1])
     dist_reward = torch.where(dist_reward > 0.6, dist_reward * 2, dist_reward)
     
     axis1 = tf_vector(baxter_grasp_rot, gripper_forward_axis)
@@ -704,7 +742,6 @@ def compute_baxter_reward(
     # regularization on the actions (summed for each environment)
     action_penalty = torch.sum(actions ** 2, dim=-1)
 
-
     # how far the cabinet has been opened out
     open_reward = cabinet_dof_pos[:, 3]  # drawer_top_joint
     
@@ -718,8 +755,8 @@ def compute_baxter_reward(
                                                   torch.where(open_reward > 0.1, rewards + 0.5,
                                                               torch.where(open_reward > 0.05, rewards + 0.35,
                                                                           torch.where(open_reward > 0.01, rewards + 0.2,
-                                                                                      torch.where(open_reward > 0.0, rewards + 0.15, rewards)))))))
-    print(len(finger_dist_reward[finger_dist_reward > 0.]))
+                                                                                      torch.where(open_reward > 0.0, rewards, rewards)))))))
+    # print(len(finger_dist_reward[finger_dist_reward > 0.]))
     # rewards = torch.where(baxter_lfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,
     #                       torch.ones_like(rewards) * -1, rewards)
     # rewards = torch.where(baxter_rfinger_pos[:, 0] > drawer_grasp_pos[:, 0] - distX_offset,

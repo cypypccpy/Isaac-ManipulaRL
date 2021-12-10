@@ -30,11 +30,12 @@ def process_sac(args, env, cfg_train, logdir):
               )
 
     if is_testing:
-        logdir = logdir
+        logdir = logdir + "_sac_1450"
         print("Loading model from {}/model_{}.pt".format(logdir, chkpt))
-        sac.test("{}/model_960.pt".format(logdir))
+        sac.test("{}/model_1450.pt".format(logdir))
     elif chkpt > 0:
-        print("Loading model from {}/model_{}.pt".format(logdir, chkpt))
-        sac.load("{}/model_960.pt".format(logdir))
+        load_model_log = logdir + "_sac_1450"
+        print("Loading model from {}/model_{}.pt".format(load_model_log, chkpt))
+        sac.load("{}/model_1450.pt".format(load_model_log))
 
     return sac
