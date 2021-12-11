@@ -26,7 +26,7 @@ class SAC:
                  num_learning_epochs,
                  demonstration_buffer_len = 60000,
                  replay_buffer_len = 1000000,
-                 gamma=0.995,
+                 gamma=0.99,
                  init_noise_std=1.0,
                  learning_rate=3e-4,
                  tau = 0.005,
@@ -145,8 +145,8 @@ class SAC:
                     # Step the vec_environment
                     next_obs, rews, dones, infos = self.vec_env.step(actions)
 
-                    domain_para, force = self.vec_env.get_twin_module_data()
-                    self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
+                    # domain_para, force = self.vec_env.get_twin_module_data()
+                    # self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
 
                     # print(self.abstract_states[0])
                     current_obs.copy_(next_obs)

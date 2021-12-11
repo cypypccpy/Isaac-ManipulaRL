@@ -11,7 +11,7 @@ learn:
   agent_name: mynewtask_ppo
   test: False
   resume: 0
-  save_interval: 10 # check for potential saves every this many iterations
+  save_interval: 1 # check for potential saves every this many iterations
   print_log: True
 
   # rollout params
