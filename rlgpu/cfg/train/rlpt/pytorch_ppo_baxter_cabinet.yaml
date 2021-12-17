@@ -10,7 +10,7 @@ policy: # only works for MlpPolicy right now
 learn:
   agent_name: mynewtask_ppo
   test: False
-  resume: 0
+  resume: 10
   save_interval: 1 # check for potential saves every this many iterations
   print_log: True
 

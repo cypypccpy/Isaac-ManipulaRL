@@ -75,7 +75,7 @@ class BaxterCabinet(BaseTask):
 
         self.randomization_params = self.cfg["task"]["randomization_params"]
 
-        self.is_test = False
+        self.is_test = True
         self.abnormal_state = False
         self.catch = False
         # Camera Sensor
@@ -248,7 +248,7 @@ class BaxterCabinet(BaseTask):
 
         cabinet_shape_index = self.gym.get_asset_rigid_shape_count(cabinet_asset)
         cabinet_shape_props = self.gym.get_asset_rigid_shape_properties(cabinet_asset)
-        cabinet_shape_props[cabinet_shape_index - 1].friction += 4
+        cabinet_shape_props[cabinet_shape_index - 1].friction += 2
         self.gym.set_asset_rigid_shape_properties(cabinet_asset, cabinet_shape_props)
 
         cabinet_shape_props = self.gym.get_asset_rigid_shape_properties(cabinet_asset)
@@ -538,15 +538,23 @@ class BaxterCabinet(BaseTask):
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(multi_env_ids_int32), len(multi_env_ids_int32))
 
+        cabinet_indices = self.global_indices[env_ids, 1:].flatten()
+        # visual_random = self.root_state_tensor.clone()
+        if not self.is_test:
+            self.root_state_tensor[env_ids, 1:, 0] + 0.05 * (torch.randn((len(env_ids), 1+self.num_props), device=self.device))
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                              gymtorch.unwrap_tensor(self.root_state_tensor),
+                                              gymtorch.unwrap_tensor(cabinet_indices), len(cabinet_indices))
+
         self.reverse_actions = torch.zeros_like(self.baxter_dof_targets[:, self.baxter_begin_dof:self.num_baxter_dofs][:, :8])
-        
+        self.corrected_count = 0
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
         self.demostration_step = 0
         self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 2:
+        if self.demostration_round < 1:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 
@@ -605,12 +613,6 @@ class BaxterCabinet(BaseTask):
                 self.baxter_dof_targets[i, 17] = 0.0208 * (self.actions[i, 7] + 1) / 2
                 self.baxter_dof_targets[i, 18] = -0.0208 * (self.actions[i, 7] + 1) / 2
 
-            
-            env_ids_int32 = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
-            self.gym.set_dof_position_target_tensor(self.sim,
-                                                    gymtorch.unwrap_tensor(self.baxter_dof_targets))
-
-
             self.gym.set_dof_position_target_tensor(self.sim,
                                                     gymtorch.unwrap_tensor(self.baxter_dof_targets))
 
@@ -627,22 +629,25 @@ class BaxterCabinet(BaseTask):
             #                                                 gymtorch.unwrap_tensor(self.root_state_tensor),
             #                                                 gymtorch.unwrap_tensor(cabinet_indices), len(cabinet_indices))
             if self.is_test:
-                # if self.abnormal_state:
-                #     self.baxter_dof_targets[:, 17] = 0.02
-                #     self.baxter_dof_targets[:, 18] = -0.02
-                #     self.gym.set_dof_position_target_tensor(self.sim,
-                #                                             gymtorch.unwrap_tensor(self.baxter_dof_targets))
-                #     cabinet_indices = self.global_indices[:, 1].flatten()
-                #     self.root_state_tensor[:, 1, 2] += 0.01
+                if self.isaac_ros_server.force == 1.0 and self.corrected_count < 2:
+                    print(self.isaac_ros_server.force)
+                    self.baxter_dof_targets[:, 17] = 0.02
+                    self.baxter_dof_targets[:, 18] = -0.02
+                    self.gym.set_dof_position_target_tensor(self.sim,
+                                                            gymtorch.unwrap_tensor(self.baxter_dof_targets))
+                    cabinet_indices = self.global_indices[:, 1:].flatten()
+                    self.root_state_tensor[:, 1:, 0] += 0.01
 
-                #     self.gym.set_actor_root_state_tensor_indexed(self.sim,
-                #                                                 gymtorch.unwrap_tensor(self.root_state_tensor),
-                #                                                 gymtorch.unwrap_tensor(cabinet_indices), len(cabinet_indices))
-                #     self.abnormal_state = False
+                    self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                                gymtorch.unwrap_tensor(self.root_state_tensor),
+                                                                gymtorch.unwrap_tensor(cabinet_indices), len(cabinet_indices))
+                    self.corrected_count += 1
 
-                joint_position = [0 for i in range(9)]
+                joint_position = [0 for i in range(10)]
                 joint_position[0:7] = self.baxter_dof_pos[1, 10:17].cpu().detach().numpy().tolist()
                 joint_position[7:9] = self.baxter_dof_targets[1, 17:19].cpu().detach().numpy().tolist()
+                joint_position[9] = self.corrected_count
+
                 self.isaac_ros_server.joint_states_server(joint_position)
 
     def post_physics_step(self):

@@ -11,8 +11,9 @@ class isaac_ros_server():
         rospy.init_node("isaac_ros_server")
         print("Initializing Done... ")
 
-        self.force_sensor = Float32MultiArray()
-        rospy.Subscriber("force", Float32MultiArray, self.ForceCallback)
+        self.force = 0.0
+        self.force_sensor = Float32()
+        rospy.Subscriber("force", Float32, self.ForceCallback)
         self.pub = rospy.Publisher('joint_states', JointState, queue_size=1)
 
         def thread_job():
@@ -31,15 +32,14 @@ class isaac_ros_server():
         
 
     def ForceCallback(self, force_sensor):
-        self.force_sensor = force_sensor.data
-        print(self.force_sensor)
+        self.force = force_sensor.data
 
     def joint_states_server(self, joint_position):
-        rate = rospy.Rate(10) # 10hz
+        rate = rospy.Rate(100) # 10hz
         joint_states = JointState()
         joint_states.header = Header()
         joint_states.header.stamp = rospy.Time.now()
-        joint_states.name = ['right_s0', 'right_s1', 'right_e0', 'right_e1', 'right_w0', 'right_w1', 'right_w2', 'lfinger', 'rfinger']
+        joint_states.name = ['right_s0', 'right_s1', 'right_e0', 'right_e1', 'right_w0', 'right_w1', 'right_w2', 'lfinger', 'rfinger', "correct_flag"]
         joint_states.position = joint_position
         joint_states.velocity = []
         joint_states.effort = []
