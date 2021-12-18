@@ -8,20 +8,24 @@ import matplotlib.pyplot as plt
 
 
 
-fig = plt.figure()
-ax1 = fig.add_subplot(131)
-ax2 = fig.add_subplot(132)
-ax3 = fig.add_subplot(133)
-#ax4 = fig.add_subplot(224)
-#ax5 = fig.add_subplot(225)
-#ax6 = fig.add_subplot(226)
+fig1 = plt.figure()
+ax11 = fig1.add_subplot(131)
+ax12 = fig1.add_subplot(132)
+ax13 = fig1.add_subplot(133)
+AX1 = [ax11,ax12,ax13]
 
-ax = [ax1,ax2,ax3]
+fig2 = plt.figure()
+ax21 = fig2.add_subplot(131)
+ax22 = fig2.add_subplot(132)
+ax23 = fig2.add_subplot(133)
 
-fname1 = ('x', 'y', 'z', 'rx', 'ry', 'rz')
-for j in range(3, 6):
-    fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dataFile_%s.txt' % (fname1[j])
-    dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dmp_dataFile_%s.txt' % (fname1[j])
+
+AX2 = [ax21,ax22,ax23]
+
+fname1 = ('x', 'y', 'z', 'rx', 'ry', 'rz', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6')
+for j in range(9, 12):
+    fname = '/home/xrh/Desktop/ur_assemble/data/track_data/assemble_joints_1s/dataFile_%s.txt' % (fname1[j])
+    dmp_fname = '/home/xrh/Desktop/ur_assemble/data/track_data/assemble_joints_1s/dmp_dataFile_%s.txt' % (fname1[j])
     X1, Y1 = [], []
     X2, Y2 = [], []
 
@@ -39,10 +43,10 @@ for j in range(3, 6):
             X2.append(line2)
             Y2.append(value2[0])
 
-    ax[j-3].plot(Y1)
-    ax[j-3].axis('tight') # 坐标轴适应数据量 axis 设置坐标轴
-#    ax[j-3].plot(Y2)
-#    ax[j-3].axis('tight') # 坐标轴适应数据量 axis 设置坐标轴
+    AX1[j-9].plot(Y1)
+    AX1[j-9].axis('tight') 
+    AX2[j-9].plot(Y2)
+    AX2[j-9].axis('tight')
 
 
 

@@ -324,7 +324,7 @@
   <joint name="shaft_fixed_joint" type="fixed">
     <parent link="gripper_link"/>
     <child link="shaft_link"/>
-    <origin rpy="0.0 -1.57 3.14159263" xyz="0 0.0 0.0"/>
+    <origin rpy="0.0 -1.57 3.14159263" xyz="0 0.0 0.11"/>
   </joint>
 
   <transmission name="shoulder_pan_trans">

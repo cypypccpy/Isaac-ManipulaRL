@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 x,y,z = [], [], []
 xd,yd,zd = [], [], []
 
-x_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dataFile_x.txt'
-x_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dmp_dataFile_x.txt'
+x_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dataFile_x.txt'
+x_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dmp_dataFile_x.txt'
 with open(x_fname, 'r') as fx:#1
     linesx = fx.readlines()#2
     for linex in linesx:#3
@@ -20,8 +20,8 @@ with open(x_dmp_fname, 'r') as fxd:#1
         valuexd = [float(sxd) for sxd in linexd.split()]#4
         xd.append(valuexd[0])
 
-y_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dataFile_y.txt'
-y_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dmp_dataFile_y.txt'
+y_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dataFile_y.txt'
+y_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dmp_dataFile_y.txt'
 with open(y_fname, 'r') as fy:#1
     linesy = fy.readlines()#2
     for liney in linesy:#3
@@ -33,8 +33,8 @@ with open(y_dmp_fname, 'r') as fyd:#1
         valueyd = [float(syd) for syd in lineyd.split()]#4
         yd.append(valueyd[0])
 
-z_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dataFile_z.txt'
-z_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dmp_dataFile_z.txt'
+z_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dataFile_z.txt'
+z_dmp_fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_joints_1s/dmp_dataFile_z.txt'
 with open(z_fname, 'r') as fz:#1
     linesz = fz.readlines()#2
     for linez in linesz:#3

@@ -34,6 +34,6 @@ class Demonstration():
             return self.dof_pos[self.step_size - 1, :]
 
 if __name__ == '__main__':
-    demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/assets/ur_assemble/track_data/assemble_0.1s/dataFile.txt')
+    demonstration = Demonstration('/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/assets/ur_assemble/track_data/assemble_joints_0.1s/dataFile_joints.txt')
     for i in range(demonstration.step_size):
         print(demonstration.get_dof_pos(i))

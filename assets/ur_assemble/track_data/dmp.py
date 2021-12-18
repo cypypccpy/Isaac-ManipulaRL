@@ -248,12 +248,12 @@ class MyDmp(object):
 
 if __name__ == '__main__':
     
-    fname1 = ('x', 'y', 'z', 'rx', 'ry', 'rz')
+    fname1 = ('x', 'y', 'z', 'rx', 'ry', 'rz', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6')
     
-    for j in range(0, 6):
+    for j in range(0, 12):
         mydmp = MyDmp()
-        fname = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dataFile_%s.txt' % (fname1[j])
-        sfn = '/home/cobot/Desktop/assemble_project/track_data/assemble_0.01s/dmp_dataFile_%s.txt' % (fname1[j])
+        fname = '/home/xrh/Desktop/ur_assemble/data/track_data/assemble_joints_0.01s/dataFile_%s.txt' % (fname1[j])
+        sfn = '/home/xrh/Desktop/ur_assemble/data/track_data/assemble_joints_0.01s/dmp_dataFile_%s.txt' % (fname1[j])
         print( fname)
     
         mydmp.learn_weights_from_file(fname)
