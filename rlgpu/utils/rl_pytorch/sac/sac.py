@@ -10,6 +10,7 @@ import statistics
 from collections import deque
 
 import torch
+from torch._C import BenchmarkExecutionStats, DeviceObjType
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -109,6 +110,7 @@ class SAC:
 
         self.batch_size = batch_size
         self.criterion = torch.nn.SmoothL1Loss()
+        self.twin_criterion = torch.nn.CrossEntropyLoss()
 
         # Load the target value network parameters
         for target_param, param in zip(self.actor_critic.target_value_net.parameters(), self.actor_critic.value_net.parameters()):
@@ -146,14 +148,15 @@ class SAC:
                     # Step the vec_environment
                     next_obs, rews, dones, infos = self.vec_env.step(actions)
 
-                    # domain_para, force = self.vec_env.get_twin_module_data()
-                    # self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
+                    domain_para, force = self.vec_env.get_twin_module_data()
+                    self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
+                    self.abstract_states = torch.softmax(self.abstract_states, dim=1)
 
-                    # print(self.abstract_states[0])
+                    print(self.abstract_states)
                     current_obs.copy_(next_obs)
         else:
             Return = []
-            last_score_mean = 0
+            best_score_mean, best_it = 0, 0
             action_range = torch.Tensor([self.action_space.low, self.action_space.high]).to('cuda:0')
             states = current_obs
 
@@ -175,7 +178,7 @@ class SAC:
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
                     next_states, reward, done, _ = self.vec_env.step(actions)
-                    # domain_para, force = self.vec_env.get_twin_module_data()
+                    domain_para, force = self.vec_env.get_twin_module_data()
                     # implement reward scale
                     reward *= self.reward_scale
 
@@ -185,21 +188,30 @@ class SAC:
                         self.buffer.push((states, actions, reward, next_states, done))
                     states = next_states
 
-                    score += reward
+                    if self.buffer.buffer_len() >= self.demonstration_buffer_len:
+                        score += reward
                     # if done:
                     #     break
                     if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
-                        # self.update_twin_module(states, domain_para, force)
+                        self.update_twin_module(states, domain_para, force)
                     
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
                 self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
-                # self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
+                self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
+                self.writer.add_scalar('Reward/Std', self.actor_critic.std.detach().mean(), it)
 
-                if score.mean() >= last_score_mean:
-                    self.save(os.path.join(self.log_dir, 'model_best.pt'.format(it)))
-                last_score_mean = score.mean()
+                if score.mean() >= best_score_mean:
+                    best_it = it - 1
+                    best_score_mean = score.mean()
+                else:
+                    if best_score_mean >= 1500 and torch.rand(1) > 0.25:
+                        self.actor_critic.load_state_dict(torch.load(os.path.join(self.log_dir, 'model_{}.pt'.format(best_it))))
+                        print("return to best model: " + 'model_{}.pt'.format(best_it))
+                        self.actor_critic.train()
+
+                print(best_score_mean)
                 score = 0
 
                 if it % log_interval == 0:
@@ -211,7 +223,7 @@ class SAC:
         
         self.abstract_states = self.actor_critic.act_abstract_states(useful_state, force)
 
-        self.twin_loss = self.criterion(domain_para, self.abstract_states)
+        self.twin_loss = self.twin_criterion(self.abstract_states, domain_para)
 
         self.twin_optimizer.zero_grad()
         self.twin_loss.backward()

@@ -29,14 +29,15 @@ def process_sac(args, env, cfg_train, logdir):
               is_testing=is_testing
               )
 
-    logdir_name = logdir + "_892.pt_4926"
+    # logdir_name = logdir + "_892.pt_4926"
+    logdir_name = logdir
     if is_testing:
         logdir = logdir_name
         print("Loading model from {}/model_{}.pt".format(logdir, chkpt))
-        sac.test("{}/model_892.pt".format(logdir))
+        sac.test("{}/model_918.pt".format(logdir))
     elif chkpt > 0:
         load_model_log = logdir_name
         print("Loading model from {}/model_{}.pt".format(load_model_log, chkpt))
-        sac.load("{}/model_892.pt".format(load_model_log))
+        sac.load("{}/model_918.pt".format(load_model_log))
 
     return sac

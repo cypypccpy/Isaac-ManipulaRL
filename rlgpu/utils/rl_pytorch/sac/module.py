@@ -37,8 +37,8 @@ class ActorCritic(nn.Module):
 
     def act(self, states):
         mean, log_std = self.policy_net(states)
-        std = log_std.exp()
-        normal = Normal(mean, std)
+        self.std = log_std.exp()
+        normal = Normal(mean, self.std)
 
         z = normal.sample()
         actions = torch.tanh(z)
@@ -67,8 +67,6 @@ class ActorCritic(nn.Module):
 
     def act_abstract_states(self, states, force):
         abs_states = self.twin_net(states, force)
-
-        abs_states = torch.softmax(abs_states, dim = 1)
 
         return abs_states
 

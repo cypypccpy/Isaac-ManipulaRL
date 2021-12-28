@@ -75,7 +75,7 @@ class BaxterCabinet(BaseTask):
 
         self.randomization_params = self.cfg["task"]["randomization_params"]
 
-        self.is_test = True
+        self.is_test = False
         self.abnormal_state = False
         self.catch = False
         # Camera Sensor
@@ -466,15 +466,10 @@ class BaxterCabinet(BaseTask):
         self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:19], to_target, finger_dist,
                                   self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
 
-        self.force_buf = torch.zeros_like(self.fsdata)[:, :3]
-        self.force_buf[:, 0] = torch.where(self.fsdata[:, 0] > 0, torch.ones_like(self.force_buf[:, 0]), torch.ones_like(self.force_buf[:, 0]) * -1)
-        self.force_buf[:, 1] = torch.where(self.fsdata[:, 1] > 0, torch.ones_like(self.force_buf[:, 1]), torch.ones_like(self.force_buf[:, 1]) * -1)
-        self.force_buf[:, 2] = torch.where(self.fsdata[:, 2] > 0, torch.ones_like(self.force_buf[:, 2]), torch.ones_like(self.force_buf[:, 2]) * -1)
-        # print(self.force_buf[0])
+        self.force_buf = self.fsdata[:, :3]
 
-        self.domain_para_buf = torch.zeros_like(to_target[:, 0:2])
-        self.domain_para_buf[:, 0] = torch.where(self.cabinet_dof_pos[:, 3] > 0.01, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
-        self.domain_para_buf[:, 1] = torch.where(self.cabinet_dof_pos[:, 3] < 0.01, torch.ones_like(self.domain_para_buf[:, 0]), self.domain_para_buf[:, 0])
+        self.domain_para_buf = torch.zeros(self.num_envs, dtype=int, device=self.device)
+        self.domain_para_buf[:] = torch.where(self.cabinet_dof_pos[:, 3] > 0.01, torch.ones_like(self.domain_para_buf[:]), self.domain_para_buf[:])
 
         if abs(self.baxter_lfinger_pos[0, 2]- self.drawer_grasp_pos[0, 2]) < 0.02 and abs(self.baxter_lfinger_pos[0, 2] - self.drawer_grasp_pos[0, 2]) < 0.02:
             self.catch = True
@@ -554,7 +549,7 @@ class BaxterCabinet(BaseTask):
         self.demostration_round += 1
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 1:
+        if self.demostration_round < 2:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 

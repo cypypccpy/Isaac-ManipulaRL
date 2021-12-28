@@ -29,8 +29,6 @@ class isaac_ros_server():
 
         rospy.on_shutdown(clean_shutdown)
 
-        
-
     def ForceCallback(self, force_sensor):
         self.force = force_sensor.data
 
