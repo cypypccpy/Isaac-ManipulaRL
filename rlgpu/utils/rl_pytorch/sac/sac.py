@@ -25,8 +25,8 @@ class SAC:
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                #  demonstration_buffer_len = 60000,
-                 demonstration_buffer_len = 50000,
+                #  demonstration_buffer_len = 50000,
+                 demonstration_buffer_len = 0,
                  replay_buffer_len = 1000000,
                  gamma=0.99,
                  init_noise_std=1.0,
@@ -206,7 +206,7 @@ class SAC:
                     best_it = it - 1
                     best_score_mean = score.mean()
                 else:
-                    if best_score_mean >= 1500 and torch.rand(1) > 0.25:
+                    if best_score_mean >= 1500 and torch.rand(1) < 0.25:
                         self.actor_critic.load_state_dict(torch.load(os.path.join(self.log_dir, 'model_{}.pt'.format(best_it))))
                         print("return to best model: " + 'model_{}.pt'.format(best_it))
                         self.actor_critic.train()

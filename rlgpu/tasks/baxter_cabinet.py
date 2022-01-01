@@ -13,6 +13,7 @@ import os
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from rlgpu.utils.torch_jit_utils import *
+from torch.overrides import is_tensor_method_or_property
 
 from tasks.base.base_task import BaseTask
 import torch
@@ -475,6 +476,9 @@ class BaxterCabinet(BaseTask):
             self.catch = True
             self.catch_state = self.baxter_lfinger_pos[0, 0]- self.drawer_grasp_pos[0, 0]
 
+        if self.is_test:
+            self.force_record.append(np.array([self.force_buf[0, 0].cpu(), self.force_buf[0, 1].cpu(), self.force_buf[0, 2].cpu()]))
+            np.savetxt("/home/lohse/isaac_ws/src/isaac-gym/scripts/Isaac-drlgrasp/rlgpu/tasks/sim_force_record.txt", self.force_record)
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)
         # torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
@@ -547,9 +551,10 @@ class BaxterCabinet(BaseTask):
         self.reset_buf[env_ids] = 0
         self.demostration_step = 0
         self.demostration_round += 1
+        self.force_record = []
 
     def pre_physics_step(self, actions):
-        if self.demostration_round < 2:
+        if self.demostration_round < 1:
             self.actions = actions.clone().to(self.device)
             self.demostration_step += 1
 
@@ -639,8 +644,8 @@ class BaxterCabinet(BaseTask):
                     self.corrected_count += 1
 
                 joint_position = [0 for i in range(10)]
-                joint_position[0:7] = self.baxter_dof_pos[1, 10:17].cpu().detach().numpy().tolist()
-                joint_position[7:9] = self.baxter_dof_targets[1, 17:19].cpu().detach().numpy().tolist()
+                joint_position[0:7] = self.baxter_dof_pos[0, 10:17].cpu().detach().numpy().tolist()
+                joint_position[7:9] = self.baxter_dof_targets[0, 17:19].cpu().detach().numpy().tolist()
                 joint_position[9] = self.corrected_count
 
                 self.isaac_ros_server.joint_states_server(joint_position)
