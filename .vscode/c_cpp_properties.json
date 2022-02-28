@@ -1,0 +1,33 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/lohse/convertURDF_ws/devel/include/**",
+        "/home/lohse/MYNT-EYE-S-SDK/wrappers/ros/devel/include/**",
+        "/home/lohse/gtsam_ws/devel/include/**",
+        "/home/lohse/pacecat_ws/devel/include/**",
+        "/home/lohse/21_tigerarm_ros/devel/include/**",
+        "/home/lohse/catkin_ws/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/opt/openrobots/include/**",
+        "/opt/openrobots/include/**",
+        "/home/lohse/21_tigerarm_ros/src/arm_moveit_kinematics/include/**",
+        "/home/lohse/vins-fusion_ws/src/VINS-Fusion/camera_models/include/**",
+        "/home/lohse/isaac_ws/src/isaac-gym/include/**",
+        "/home/lohse/gtsam_ws/src/LIO-SAM/include/**",
+        "/home/lohse/catkin_ws/src/rmua_scut/roborts_base/include/**",
+        "/home/lohse/catkin_ws/src/rmua_scut/roborts_common/include/**",
+        "/home/lohse/catkin_ws/src/rmua_scut/roborts_costmap/include/**",
+        "/home/lohse/srslam_ws/src/SRSLAM/include/**",
+        "/home/lohse/convertURDF_ws/src/universal_robot/ur_kinematics/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}

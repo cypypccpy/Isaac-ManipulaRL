@@ -128,16 +128,17 @@ class VecTaskPython(VecTask):
         return torch.clamp(self.task.reverse_actions.to(self.rl_device), -self.clip_actions, self.clip_actions)
 
     def get_twin_module_data(self):
-
+        
         return self.task.domain_para_buf.to(self.rl_device), self.task.force_buf.to(self.rl_device)
+
+    def get_init_goal(self):
+
+        return self.task.init_goal_buf.to(self.rl_device)
 
     def step(self, actions):
         actions_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
 
         self.task.step(actions_tensor)
-
-        if self.task.use_her:
-            return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.goal_buf.to(self.rl_device), self.task.extras
 
         return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
 

@@ -30,7 +30,7 @@ class SoftQNet(nn.Module):
         super(SoftQNet, self).__init__()
         self.linear1 = nn.Linear(state_dim + action_dim, 64)
         self.linear2 = nn.Linear(64, 64)
-        self.linear3 = nn.Linear(64, 64)
+        # self.linear3 = nn.Linear(64, 64)
         self.linear4 = nn.Linear(64, 64)
         self.linear5 = nn.Linear(64, 1)
         self.hw = nn.Hardswish()
@@ -39,7 +39,7 @@ class SoftQNet(nn.Module):
         x = torch.cat([state, action], 1)
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
+        # x = F.relu(self.linear3(x))
         x = self.hw(self.linear4(x))
         x = self.linear5(x)
 
@@ -55,7 +55,7 @@ class PolicyNet(nn.Module):
 
         self.linear1 = nn.Linear(state_dim, 64)
         self.linear2 = nn.Linear(64, 64)
-        self.linear3 = nn.Linear(64, 64)
+        # self.linear3 = nn.Linear(64, 64)
         self.linear4 = nn.Linear(64, 64)
         self.hw = nn.Hardswish()
 
@@ -65,7 +65,7 @@ class PolicyNet(nn.Module):
     def forward(self, state):
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
-        x = F.relu(self.linear3(x))
+        # x = F.relu(self.linear3(x))
         x = self.hw(self.linear4(x))
 
         mean = self.mean_linear(x)
@@ -76,12 +76,16 @@ class PolicyNet(nn.Module):
 class TwinNet(nn.Module):
     def __init__(self, state_dim, force_dim, edge=3e-3):
         super(TwinNet, self).__init__()
-        self.linear1 = nn.Linear(state_dim + force_dim, 64)
+        # self.linear1 = nn.Linear(state_dim + force_dim, 64)
+        self.linear1 = nn.Linear(force_dim, 64)
+
         self.linear2 = nn.Linear(64, 64)
         self.linear3 = nn.Linear(64, 2)
 
     def forward(self, state, force):
-        x = F.relu(self.linear1(torch.cat([state, force], 1)))
+        # x = F.relu(self.linear1(torch.cat([state, force], 1)))
+        x = F.relu(self.linear1(force, 1))
+
         x = F.relu(self.linear2(x))
         x = self.linear3(x)
 

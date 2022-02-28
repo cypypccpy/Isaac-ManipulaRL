@@ -433,7 +433,7 @@ class BaxterCabinet(BaseTask):
         self.obs_buf = torch.cat((dof_pos_scaled[:, self.baxter_begin_dof:19], to_target,
                                   self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
 
-        self.goal_buf = torch.cat((to_target, self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
+        # self.goal_buf = torch.cat((to_target, self.cabinet_dof_pos[:, 3].unsqueeze(-1)), dim=-1)
 
         #visual input
         # camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, self.envs[0], self.camera_handles[0], gymapi.IMAGE_COLOR)

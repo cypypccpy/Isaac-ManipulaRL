@@ -36,7 +36,7 @@ class ActorCritic(nn.Module):
         # Value function
         critic_layers = []
         if self.asymmetric:
-            critic_layers.append(nn.Linear(*states_shape, critic_hidden_dim[0]))
+            critic_layers.append(nn.Linear(*obs_shape, critic_hidden_dim[0]))
         else:
             critic_layers.append(nn.Linear(*obs_shape, critic_hidden_dim[0]))
         critic_layers.append(activation)

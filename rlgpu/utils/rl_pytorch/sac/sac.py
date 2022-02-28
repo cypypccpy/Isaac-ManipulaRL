@@ -1,4 +1,5 @@
 from abc import abstractclassmethod
+from codecs import strict_errors
 from datetime import datetime
 import os
 import time
@@ -20,20 +21,19 @@ from utils.rl_pytorch.sac import ReplayBeffer
 
 
 class SAC:
-
     def __init__(self,
                  vec_env,
                  actor_critic_class,
                  num_learning_epochs,
-                #  demonstration_buffer_len = 50000,
-                 demonstration_buffer_len = 0,
+                 demonstration_buffer_len = 25000,
+                 # demonstration_buffer_len = 0,
                  replay_buffer_len = 1000000,
-                 gamma=0.99,
+                 gamma=0.98,
                  init_noise_std=1.0,
-                 learning_rate=3e-4,
+                 learning_rate=3e-3,
                  tau = 0.005,
                  alpha = 4,
-                 reward_scale = 1,
+                 reward_scale = 15,
                  batch_size = 256,
                  schedule="fixed",
                  desired_kl=None,
@@ -92,14 +92,14 @@ class SAC:
         self.q2_optimizer = optim.Adam(self.actor_critic.q2_net.parameters(), lr=q_lr)
         self.policy_optimizer = optim.Adam(self.actor_critic.policy_net.parameters(), lr=policy_lr)
 
-        self.twin_optimizer = optim.Adam(self.actor_critic.twin_net.parameters(), lr=policy_lr)
+        # self.twin_optimizer = optim.Adam(self.actor_critic.twin_net.parameters(), lr=policy_lr)
 
         self.buffer = ReplayBeffer(self.replay_buffer_len, self.demonstration_buffer_len)
         # hyperparameters
         self.gamma = gamma
-        self.target_entropy = np.log(vec_env.num_actions)
+        self.target_entropy = - np.log(1.0 / vec_env.num_actions) * 0.98
         self.tau = tau
-        self.alpha_log = torch.tensor((np.log(0.2),), dtype=torch.float32,
+        self.alpha_log = torch.zeros(1, dtype=torch.float32,
                                 requires_grad=True, device=self.device)  # trainable parameter
         # self.alpha = torch.tensor((1,), dtype=torch.float32,
         #                         requires_grad=True, device=self.device)  # trainable parameter
@@ -123,11 +123,11 @@ class SAC:
         self.apply_reset = apply_reset
 
     def test(self, path):
-        self.actor_critic.load_state_dict(torch.load(path))
+        self.actor_critic.load_state_dict(torch.load(path), strict = False)
         self.actor_critic.eval()
 
     def load(self, path):
-        self.actor_critic.load_state_dict(torch.load(path))
+        self.actor_critic.load_state_dict(torch.load(path), strict = False)
         self.current_learning_iteration = int(path.split("_")[-1].split(".")[0])
         self.actor_critic.train()
 
@@ -148,11 +148,6 @@ class SAC:
                     # Step the vec_environment
                     next_obs, rews, dones, infos = self.vec_env.step(actions)
 
-                    domain_para, force = self.vec_env.get_twin_module_data()
-                    self.abstract_states = self.actor_critic.act_abstract_states(current_obs[:, 9:12], force)
-                    self.abstract_states = torch.softmax(self.abstract_states, dim=1)
-
-                    print(self.abstract_states)
                     current_obs.copy_(next_obs)
         else:
             Return = []
@@ -178,12 +173,11 @@ class SAC:
                     # action_in =  actions * (action_range[1] - action_range[0]) / 2.0 + (action_range[1] + action_range[0]) / 2.0
                     # Step the vec_environment
                     next_states, reward, done, _ = self.vec_env.step(actions)
-                    domain_para, force = self.vec_env.get_twin_module_data()
                     # implement reward scale
                     reward *= self.reward_scale
 
                     if self.buffer.buffer_len() < self.demonstration_buffer_len:
-                        self.buffer.push_demonstration_data((states, actions, reward, next_states, done), 200)
+                        self.buffer.push_demonstration_data((states, actions, reward, next_states, done), 100)
                     else:
                         self.buffer.push((states, actions, reward, next_states, done))
                     states = next_states
@@ -192,21 +186,21 @@ class SAC:
                         score += reward
                     # if done:
                     #     break
-                    if self.buffer.buffer_len() >= self.demonstration_buffer_len + 1 and self.buffer.buffer_len() >= self.batch_size:
+                    if self.buffer.buffer_len() >= self.demonstration_buffer_len and self.buffer.buffer_len() >= self.batch_size:
                         self.update(self.batch_size)
-                        self.update_twin_module(states, domain_para, force)
                     
                 print("episode:{}, score:{}, buffer_capacity:{}".format(it, score.mean(), self.buffer.buffer_len()))
                 self.writer.add_scalar('Reward/Reward', score.mean(), it)
                 self.writer.add_scalar('Reward/Alpha', self.alpha_log.exp().detach().mean(), it)
-                self.writer.add_scalar('Reward/TwinLoss', self.twin_loss.detach().mean(), it)
                 self.writer.add_scalar('Reward/Std', self.actor_critic.std.detach().mean(), it)
+                self.writer.add_scalar('Reward/Q_Value', self.q_value.detach().mean(), it)
 
                 if score.mean() >= best_score_mean:
                     best_it = it - 1
                     best_score_mean = score.mean()
                 else:
-                    if best_score_mean >= 1500 and torch.rand(1) < 0.25:
+                    # baxter open cabinet task 1500
+                    if best_score_mean >= 1000 and torch.rand(1) < 0.2:
                         self.actor_critic.load_state_dict(torch.load(os.path.join(self.log_dir, 'model_{}.pt'.format(best_it))))
                         print("return to best model: " + 'model_{}.pt'.format(best_it))
                         self.actor_critic.train()
@@ -217,17 +211,6 @@ class SAC:
                 if it % log_interval == 0:
                     self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(it)))
             self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(num_learning_iterations)))
-
-    def update_twin_module(self, states, domain_para, force):
-        useful_state = states[:, 9:12]
-        
-        self.abstract_states = self.actor_critic.act_abstract_states(useful_state, force)
-
-        self.twin_loss = self.twin_criterion(self.abstract_states, domain_para)
-
-        self.twin_optimizer.zero_grad()
-        self.twin_loss.backward()
-        self.twin_optimizer.step()
 
     def update(self, batch_size):
         
@@ -331,7 +314,7 @@ class SAC:
             action2, log_prob2 = self.actor_critic.evaluate(next_state)
             target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
             target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
-            backup = reward + (1 - done) * self.gamma * (torch.min(target_q1_value, target_q2_value) - alpha * log_prob2)
+            backup = reward + (1 - done) * self.gamma * (torch.min(target_q1_value, target_q2_value) - 0.2 * log_prob2)
 
         q1_value = self.actor_critic.q1_net(state, action)
         q2_value = self.actor_critic.q2_net(state, action)
@@ -356,10 +339,10 @@ class SAC:
         '''loss of alpha (temperature parameter automatic adjustment)'''
         new_action, log_prob = self.actor_critic.evaluate(state)
 
-        alpha_loss = (- self.alpha_log * (log_prob - self.target_entropy).detach()).mean()
-        self.alpha_optimizer.zero_grad()
-        alpha_loss.backward()
-        self.alpha_optimizer.step()
+        # alpha_loss = - (self.alpha_log * (log_prob + self.target_entropy).detach()).mean()
+        # self.alpha_optimizer.zero_grad()
+        # alpha_loss.backward()
+        # self.alpha_optimizer.step()
 
         '''loss of actor'''
         alpha = self.alpha_log.exp().detach()
@@ -370,8 +353,9 @@ class SAC:
         q1_pi_value = self.actor_critic.q1_net(state, new_action)
         q2_pi_value = self.actor_critic.q2_net(state, new_action)
 
+        self.q_value = torch.min(q1_pi_value, q2_pi_value).detach()
         # Policy loss
-        policy_loss = (alpha * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
+        policy_loss = (0.2 * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
 
         # Update Policy
         self.policy_optimizer.zero_grad()

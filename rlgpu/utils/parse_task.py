@@ -9,6 +9,7 @@ from tasks.ur5_package import UR5Package
 from tasks.ur5_cabinet import UR5Cabinet
 from tasks.baxter_cabinet import BaxterCabinet
 from tasks.ur5_pick_and_place import UR5PickAndPlace
+from tasks.ur3_assembly_hrl import UR3Assembly
 from tasks.base.vec_task import VecTaskCPU, VecTaskGPU, VecTaskPython
 
 from utils.config import warn_task_name
@@ -66,6 +67,9 @@ def parse_task(args, cfg, cfg_train, sim_params):
         except NameError as e:
             print(e)
             warn_task_name()
-        env = VecTaskPython(task, rl_device, cfg_train.get("clip_observations", 5.0), cfg_train.get("clip_actions", 1.0))
+        if args.hierarchical == True:
+            env = VecTaskPython(task, rl_device, cfg_train.get("clip_observations", 5.0), cfg_train.get("clip_actions", 1.0))
+        else:
+            env = VecTaskPython(task, rl_device, cfg_train.get("clip_observations", 5.0), cfg_train.get("clip_actions", 1.0))
 
     return task, env

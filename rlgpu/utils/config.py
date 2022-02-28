@@ -61,6 +61,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "baxter_cabinet"), "cfg/train/rlg/rlg_baxter_cabinet.yaml", "cfg/baxter_cabinet.yaml"
         elif args.task == "UR5Cabinet":
             return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlg/rlg_ur5_cabinet.yaml", "cfg/ur5_cabinet.yaml"
+        elif args.task == "UR3Assembly":
+            return os.path.join(args.logdir, "ur3_assembly"), "cfg/train/rlg/rlg_ur3_assembly.yaml", "cfg/ur3_assembly.yaml"
         elif args.task == "UR5Package":
             return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlg/rlg_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "UR5PickAndPlace":
@@ -72,6 +74,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "baxter_cabinet"), "cfg/train/rlpt/pytorch_ppo_baxter_cabinet.yaml", "cfg/baxter_cabinet.yaml"
         elif args.task == "UR5Cabinet":
             return os.path.join(args.logdir, "ur5_cabinet"), "cfg/train/rlpt/pytorch_ppo_ur5_cabinet.yaml", "cfg/ur5_cabinet.yaml"
+        elif args.task == "UR3Assembly":
+            return os.path.join(args.logdir, "ur3_assembly"), "cfg/train/rlpt/pytorch_ppo_ur3_assembly.yaml", "cfg/ur3_assembly.yaml"
         elif args.task == "UR5Package":
             return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlpt/pytorch_ppo_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "UR5PickAndPlace":
@@ -226,6 +230,8 @@ def get_args(benchmark=False, use_rlg_config=False):
             "default": "Python", "help": "Choose Python or C++"},
         {"name": "--rl_device", "type": str, "default": "cuda:0",
             "help": "Choose CPU or GPU device for inferencing policy network"},
+        {"name": "--hierarchical", "action": "store_true", "default": False,
+            "help": "If hierarchical"},
         {"name": "--logdir", "type": str, "default": "logs/"},
         {"name": "--experiment", "type": str, "default": "Base",
             "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},

@@ -186,6 +186,13 @@ class PPO:
                 ep_infos.clear()
             self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(num_learning_iterations)))
 
+    def run_separate_step(self, current_obs):
+        with torch.no_grad():
+            # Compute the action
+            actions = self.actor_critic.act_inference(current_obs)
+            # Step the vec_environment
+        return actions
+
     def log(self, locs, width=80, pad=35):
         self.tot_timesteps += self.num_transitions_per_env * self.vec_env.num_envs
         self.tot_time += locs['collection_time'] + locs['learn_time']

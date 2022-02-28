@@ -1,0 +1,36 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/lohse/convertURDF_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/isaac_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/MYNT-EYE-S-SDK/wrappers/ros/devel/lib/python2.7/dist-packages",
+        "/home/lohse/gtsam_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/pacecat_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/21_tigerarm_ros/devel/lib/python2.7/dist-packages",
+        "/home/lohse/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages",
+        "/opt/openrobots/lib/python3.7/site-packages",
+        "/opt/intel/openvino_2021/python/python3",
+        "/opt/intel/openvino_2021/deployment_tools/tools/post_training_optimization_toolkit",
+        "/opt/intel/openvino_2021/deployment_tools/open_model_zoo/tools/accuracy_checker",
+        "/opt/intel/openvino_2021/deployment_tools/model_optimizer",
+        "/opt/intel/openvino_2021/data_processing/dl_streamer/python",
+        "/opt/intel/openvino_2021/data_processing/gstreamer/lib/python3.8/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/lohse/convertURDF_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/isaac_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/MYNT-EYE-S-SDK/wrappers/ros/devel/lib/python2.7/dist-packages",
+        "/home/lohse/gtsam_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/pacecat_ws/devel/lib/python2.7/dist-packages",
+        "/home/lohse/21_tigerarm_ros/devel/lib/python2.7/dist-packages",
+        "/home/lohse/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages",
+        "/opt/openrobots/lib/python3.7/site-packages",
+        "/opt/intel/openvino_2021/python/python3",
+        "/opt/intel/openvino_2021/deployment_tools/tools/post_training_optimization_toolkit",
+        "/opt/intel/openvino_2021/deployment_tools/open_model_zoo/tools/accuracy_checker",
+        "/opt/intel/openvino_2021/deployment_tools/model_optimizer",
+        "/opt/intel/openvino_2021/data_processing/dl_streamer/python",
+        "/opt/intel/openvino_2021/data_processing/gstreamer/lib/python3.8/site-packages"
+    ]
+}

@@ -60,7 +60,7 @@
   <joint name="shoulder_pan_joint" type="revolute">
     <parent link="base_link"/>
     <child link="shoulder_link"/>
-    <origin rpy="0.0 -1.57 0.0" xyz="0.0 0.0 0.163"/>
+    <origin rpy="0.0 -0 0.0" xyz="0.0 0.0 0.163"/>
     <axis xyz="0 0 1"/>
     <limit effort="150.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     <dynamics damping="0.0" friction="0.0"/>
@@ -238,6 +238,104 @@
       <origin rpy="0 0 0" xyz="-0.01 0 0"/>
     </collision>
   </link>
+
+  <link
+    name="gripper_link">
+    <inertial>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="1" />
+      <inertia
+        ixx="1"
+        ixy="0"
+        ixz="0"
+        iyy="1"
+        iyz="0"
+        izz="1" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://meshes_gripper/toolMount.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.2 0.2 0.2 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="1.57 0 0" />
+      <geometry>
+        <mesh
+          filename="package://meshes_gripper/toolMount.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="gripper_fixed_joint" type="revolute">
+    <parent link="wrist_3_link"/>
+    <child link="gripper_link"/>
+    <origin rpy="0.0 3.1415926 3.14159263" xyz="0 0.24 0.0"/>
+    <limit lower="-3.1415926" upper="3.14159263"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link
+    name="shaft_link">
+    <inertial>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="1" />
+      <inertia
+        ixx="1"
+        ixy="0"
+        ixz="0"
+        iyy="1"
+        iyz="0"
+        izz="1" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0.0 -0.033"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://meshes_gripper/shaft.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 -0.033 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://meshes_gripper/shaft.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="shaft_fixed_joint" type="fixed">
+    <parent link="gripper_link"/>
+    <child link="shaft_link"/>
+    <origin rpy="0.0 -1.57 3.14159263" xyz="0 0.0 0.11"/>
+  </joint>
+
+
   <transmission name="shoulder_pan_trans">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="shoulder_pan_joint">
