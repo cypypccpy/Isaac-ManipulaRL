@@ -277,8 +277,6 @@ class UR5Package(BaseTask):
             self.ur3_dof_lower_limits.append(ur3_dof_props['lower'][i])
             self.ur3_dof_upper_limits.append(ur3_dof_props['upper'][i])
 
-        print(self.ur3_dof_lower_limits)
-        print(self.ur3_dof_upper_limits)
         self.ur3_dof_lower_limits = to_torch(self.ur3_dof_lower_limits, device=self.device)
         self.ur3_dof_upper_limits = to_torch(self.ur3_dof_upper_limits, device=self.device)
         self.ur3_dof_speed_scales = torch.ones_like(self.ur3_dof_lower_limits)
@@ -325,6 +323,7 @@ class UR5Package(BaseTask):
         self.shaft_poses = []
         self.lfinger_poses = []
         self.rfinger_poses = []
+        self.obs_log = []
 
         for i in range(self.num_envs):
             # create env instance
@@ -477,8 +476,10 @@ class UR5Package(BaseTask):
         # num: 12 + 12 + 3 + 1 + 1
         # hand_pos = hand_pos - to_torch([0.2075, -0.1989, 0.4304], dtype=torch.float, device=self.device)
         self.obs_buf = torch.cat((dof_pos_scaled, to_target), dim=-1)
+        print("obs_buf: ", self.obs_buf[0, :])
         # self.obs_buf = to_target
         # print(self.obs_buf)
+        self.obs_log.append(self.obs_buf[0, :].cpu().numpy())
 
         return self.obs_buf
 
@@ -527,6 +528,7 @@ class UR5Package(BaseTask):
         self.reset_buf[env_ids] = 0
         self.demonstration_step = 0
         self.demonstration_round += 1
+        np.savetxt("filename.txt", self.obs_log)
 
     def pre_physics_step(self, actions):
         if self.demonstration_round < 1:
@@ -591,8 +593,7 @@ class UR5Package(BaseTask):
             # self.ur3_dof_targets[:, :6] = tensor_clamp(
             #     targets[:, :6], self.ur3_dof_lower_limits[:6], self.ur3_dof_upper_limits[:6])
             targets = self.ur3_dof_targets[:, :7] + self.dt * self.actions * self.action_scale
-            targets
-
+            print("actions: ", targets[0, :7])
             self.gym.set_dof_position_target_tensor(self.sim,
                                                     gymtorch.unwrap_tensor(targets))
 
@@ -681,7 +682,6 @@ def compute_ur3_reward(
     rot_reward = 1 - (3.14 - torch.abs(shaft_tail_euler_angle[:, 0])) - torch.abs(shaft_tail_euler_angle[:, 1] - 0)
 
     rewards = dist_reward_scale * dist_reward + rot_reward * 0.01
-    print(rewards[0])
     # print(len(plane_dist_reward[plane_dist_reward > 0]))
 
     # rewards = torch.where(torch.abs(shaft_tail_pos[:, 0]) > 0.2,

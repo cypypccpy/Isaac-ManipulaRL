@@ -314,7 +314,7 @@ class SAC:
             action2, log_prob2 = self.actor_critic.evaluate(next_state)
             target_q1_value = self.actor_critic.target_q1_net(next_state, action2)
             target_q2_value = self.actor_critic.target_q2_net(next_state, action2)
-            backup = reward + (1 - done) * self.gamma * (torch.min(target_q1_value, target_q2_value) - 0.2 * log_prob2)
+            backup = reward + (1 - done) * self.gamma * (torch.min(target_q1_value, target_q2_value) - alpha * log_prob2)
 
         q1_value = self.actor_critic.q1_net(state, action)
         q2_value = self.actor_critic.q2_net(state, action)
@@ -355,7 +355,7 @@ class SAC:
 
         self.q_value = torch.min(q1_pi_value, q2_pi_value).detach()
         # Policy loss
-        policy_loss = (0.2 * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
+        policy_loss = (alpha * log_prob - torch.min(q1_pi_value, q2_pi_value)).mean()
 
         # Update Policy
         self.policy_optimizer.zero_grad()
