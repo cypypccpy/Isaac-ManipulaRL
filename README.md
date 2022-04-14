@@ -7,6 +7,16 @@
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 <br></br>
 
+## Pause development 
+I am very sorry that the development of this project will be suspended for a period of time. But you can refer to my latest work with IsaacGym: 
+
+We present the RL-based dual dexterous hand environment, Bi-DexHands, which provides a collection of bimanual dexterous manipulations tasks and reinforcement learning algorithms for solving them. Reaching human-level sophistication of hand dexterity and bimanual coordination remains an open challenge for modern robotics researchers.
+
+Bi-DexHands contains complex dexterous hands control tasks. Bi-DexHands is built in the NVIDIA Isaac Gym with a high-performance guarantee for training RL algorithms. Our environments focus on applying model-free RL/MARL algorithms for bimanual dexterous manipulation, which are considered as a challenging task for traditional control methods.
+
+Please visit the github page for more details and examples:
+[https://github.com/PKU-MARL/DexterousHands/](https://github.com/PKU-MARL/DexterousHands/)
+
 ## Table of Contents
 
 - [Background](#background)

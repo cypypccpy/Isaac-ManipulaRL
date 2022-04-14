@@ -67,6 +67,8 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlg/rlg_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "UR5PickAndPlace":
             return os.path.join(args.logdir, "ur5_pick_and_place"), "cfg/train/rlg/rlg_ur5_pick_and_place.yaml", "cfg/ur5_pick_and_place.yaml"
+        elif args.task == "BaxterPickAndPlace":
+            return os.path.join(args.logdir, "baxter_pick_and_place"), "cfg/train/rlpt/pytorch_ppo_baxter_pick_and_place.yaml", "cfg/baxter_pick_and_place.yaml"
         else:
             warn_task_name()
     else:
@@ -80,9 +82,10 @@ def retrieve_cfg(args, use_rlg_config=False):
             return os.path.join(args.logdir, "ur5_package"), "cfg/train/rlpt/pytorch_ppo_ur5_package.yaml", "cfg/ur5_package.yaml"
         elif args.task == "UR5PickAndPlace":
             return os.path.join(args.logdir, "ur5_pick_and_place"), "cfg/train/rlpt/pytorch_ppo_ur5_pick_and_place.yaml", "cfg/ur5_pick_and_place.yaml"
+        elif args.task == "BaxterPickAndPlace":
+            return os.path.join(args.logdir, "baxter_pick_and_place"), "cfg/train/rlpt/pytorch_ppo_baxter_pick_and_place.yaml", "cfg/baxter_pick_and_place.yaml"
         else:
             warn_task_name()
-
 
 def load_cfg(args, use_rlg_config=False):
     with open(os.path.join(os.getcwd(), args.cfg_train), 'r') as f:

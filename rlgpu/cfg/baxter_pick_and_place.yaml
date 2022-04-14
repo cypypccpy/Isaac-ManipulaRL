@@ -1,0 +1,85 @@
+# if given, will override the device setting in gym. 
+env:
+  numEnvs: 20
+  envSpacing: 1.5
+  episodeLength: 500
+  enableDebugVis: False
+
+  startPositionNoise: 0.0
+  startRotationNoise: 0.0
+
+  numProps: 4
+  aggregateMode: 0
+
+  actionScale: 0.5
+  dofVelocityScale: 0.1
+  distRewardScale: 0.75
+  rotRewardScale: 1.0
+  aroundHandleRewardScale: 0.5
+  openRewardScale: 20.0
+  fingerDistRewardScale: 5.0
+  actionPenaltyScale: 0.02
+
+  asset:
+    assetRoot: "../../assets"
+    assetFileNameFranka: "urdf/franka_description/robots/franka_panda.urdf"
+    assetFileNameCabinet: "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
+
+sim:
+  substeps: 1
+  physx:
+    num_threads: 4
+    solver_type: 1  # 0: pgs, 1: tgs
+    num_position_iterations: 150
+    num_velocity_iterations: 25
+    contact_offset: 0.005
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 1000.0
+    default_buffer_size_multiplier: 5.0
+    always_use_articulations: False
+
+  flex:
+    num_outer_iterations: 4
+    num_inner_iterations: 15
+    warm_start: 0.8
+    relaxation: 0.75
+  
+task:
+  randomize: True
+  randomization_params:
+      frequency: 500  # Define how many frames between generating new randomizations
+      # observations:
+      #     range: [0, .05]
+      #     operation: "additive"
+      #     distribution: "uniform"
+      #     schedule: "constant"  # turn on noise after `schedule_steps` num steps
+      #     schedule_steps: 5000
+      actor_params:
+          cabinet:
+              rigid_body_properties:
+                  mass:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+              rigid_shape_properties:
+                  friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  rolling_friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  torsion_friction:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  restitution:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
+                  compliance:
+                      range: [0.5, 1.5]
+                      operation: "scaling"
+                      distribution: "uniform"
