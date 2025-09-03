@@ -128,5 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#pytorch log
+# pytorch log
 rlgpu/logs
+
+# Claude Code settings
+.claude/
